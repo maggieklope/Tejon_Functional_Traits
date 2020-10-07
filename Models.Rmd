@@ -1,0 +1,218 @@
+---
+title: "Untitled"
+author: "Maggie Klope"
+date: "10/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lme4)
+library(DHARMa)
+library(glmmTMB)
+library(stats)
+library(emmeans)
+library(sjPlot)
+library(FD)
+
+# Loading 2019 abundance data calculated from transect surveys
+abund_2019 <-  read_csv("Datasheets/2019_abundance_sci_names.csv") %>% 
+  rename(species_name = Species) %>% #changing column names
+  rename(climate = Climate) %>% #changing column names
+  rename(treatment = Plot)#changing column names
+
+abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate" #changing name of int climate
+
+# Loading 2019 functional trait data (currently only has LA)
+traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>% 
+  rename(old_names = Species) %>% #changing column names
+  rename(Species = sci_name) %>% #changing column names
+  select(Climate, Treatment, Block, Species, LA) %>% 
+  mutate(LA = as.numeric(LA)) #making sure value is numeric
+
+abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate"#changing name of int climate
+
+# Loading 2017 functional trait data
+# traits_17 <- read_csv("final_traits_and_abundances.csv")
+
+# TRY Database search to fill in missing species
+TRY_DB <- read_csv("Datasheets/TRY_DB_june_2020.csv") %>% 
+  filter(ValueKindName == c("Single", "Mean", "Best estimate")) %>% 
+  #unique() %>% 
+  dplyr::group_by(TraitName, AccSpeciesName) %>%
+  summarize(mean_value = mean(StdValue)) %>% 
+  rename(species_name = AccSpeciesName)
+
+# write_csv(TRY_DB, "TRY_DB_summary.csv")
+
+# reading in 2017 functional trait datasheet
+md <- read_csv("Datasheets/MasterDataSheet(9_29_2020).csv") %>% 
+  select(climate, treatment, species_name, individual, wet_weight_g, wet_weight_mg, dry_weight_g, dry_weight_mg, Area_Leaf_total_mm2, Average_Leaf_Area, average_dry_weight, average_wet_weight) %>% 
+  mutate(wet_weight_mg = as.numeric(wet_weight_mg)) %>% 
+  mutate(wet_weight_g = as.numeric(wet_weight_g)) %>% 
+  mutate(dry_weight_g = as.numeric(dry_weight_g)) %>% 
+  mutate(dry_weight_mg = as.numeric(dry_weight_mg)) %>% 
+  mutate(leaf_area = as.numeric(Average_Leaf_Area)) %>% 
+  mutate(sla = Area_Leaf_total_mm2 / dry_weight_mg) %>% #computing sla
+  mutate(ldmc = dry_weight_mg / wet_weight_g) %>% #computing ldmc
+  select(-average_wet_weight, -average_dry_weight)
+  #drop_na(leaf_area) %>% 
+  #filter(leaf_area != 0)
+
+#finding average values for 2017 from the masterdatasheet
+traits_2017 <- md %>% 
+  group_by(climate, treatment, species_name) %>% 
+  summarise_all(mean, na.rm = TRUE)
+#changing treatment names
+traits_2017$treatment[traits_2017$treatment == "Cattle Exclosure"] <- "Partial"
+traits_2017$treatment[traits_2017$treatment == "Control"] <- "Open"
+traits_2017$treatment[traits_2017$treatment == "Full Exclosure"] <- "Total"
+# changing climate names
+traits_2017$climate[traits_2017$climate == "Semi-arid"] <- "Intermediate"
+
+#need to rename some species to match 2019 abundance
+traits_2017$species_name[traits_2017$species_name == "Trifolium microcephalum"] <- "Trifolium sp."
+traits_2017$species_name[traits_2017$species_name == "lupinus bicolor?"] <- "Lupinus bicolor"
+traits_2017$species_name[traits_2017$species_name == "Erodium cicutarium"] <- "Erodium sp."
+traits_2017$species_name[traits_2017$species_name == "Erodium brachycarpum"] <- "Erodium sp."
+traits_2017$species_name[traits_2017$species_name == "Ribes sp."] <- "Ribes californicum var. hesperium"
+traits_2017$species_name[traits_2017$species_name == "Melica imperfecta"] <- "Melica californica"
+traits_2017$species_name[traits_2017$species_name == "Plagiobothrys nothofulvus"] <- "Plagiobothrys sp."
+
+#combining 2017 trait data with 2019 abundance data
+cwm_traits <- abund_2019 %>% 
+  group_by(climate, treatment) %>% 
+  left_join(traits_2017, by = c("climate", "treatment", "species_name")) %>% 
+  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, Notes)
+
+other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
+
+#data (updated) for Community-weighted means (CWMs)
+cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+  left_join(other_traits, by = "species_name") %>% 
+  mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
+  mutate(weighted_sla = sla * Abundance) %>% 
+  mutate(weighted_ldmc = ldmc * Abundance) %>%
+  mutate(weighted_seed_mass = seed_mass * Abundance) %>%
+  mutate(weighted_n = leaf_n * Abundance) %>%
+  group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
+  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+  select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+
+#making a df just for functional diveristy calculations
+for_FD <- cwm_traits <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+  left_join(other_traits, by = "species_name") %>% 
+  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n)
+```
+
+## GLMs for individual species change
+
+- Does not include block because I only have the mean for each species at each plot
+- Some species are present in all climate/treatment, but some are not
+- Some species could be done with an lm after a log transformation
+
+```{r}
+#Bromus diandrus (grass)
+glm_bro_dia <- glm(data = traits_19[traits_19$Species == "Bromus diandrus",], LA ~ Climate * Treatment, family = gaussian)
+
+# Festuca myuros (grass)
+glm_fes_myu <- glm(data = traits_19[traits_19$Species == "Festuca myuros",], LA ~ Climate * Treatment,  family = gaussian)
+
+# Bromus hordeacous (grass)
+glm_bro_ho <- glm(data = traits_19[traits_19$Species == "Bromus hordeaceus",], LA ~ Climate * Treatment, family = gaussian)
+
+# Bromus tectorum (grass)
+glm_bro_tec <- glm(data = traits_19[traits_19$Species == "Bromus tectorum",], LA ~ Climate * Treatment, family = gaussian)
+
+# Hordeum murinum (grass)
+glm_hor_mur <- glm(data = traits_19[traits_19$Species == "Hordeum murinum",], LA ~ Climate * Treatment, family = gaussian)
+
+# Erodium cicutarium (forb)
+glm_ero_cic <- glm(data = traits_19[traits_19$Species == "Erodium cicutarium",], LA ~ Climate * Treatment, family = gaussian)
+
+# Galium aparine (forb)
+glm_gal_apa <- glm(data = traits_19[traits_19$Species == "Galium aparine",], LA ~ Climate * Treatment, family = gaussian)
+
+# Plagiobothrys nothofulvus (forb)
+glm_pla_not <- glm(data = traits_19[traits_19$Species == "Plagiobothrys nothofulvus",], LA ~ Climate * Treatment, family = gaussian)
+
+# Ribes californicum var. hesperium (shrub)
+glm_ribes <- glm(data = traits_19[traits_19$Species == "Ribes californicum var. hesperium",], LA ~ Climate * Treatment, family = gaussian)
+
+# Symphoricarpos_mollis (shrub)
+glm_sym_mol <- glm(data = traits_19[traits_19$Species == "Symphoricarpos_mollis",], LA ~ Treatment, family = gaussian) #only at Mesic climate
+
+# Ericameria nauseosa (shrub)
+glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",], LA ~ Climate * Treatment, family = gaussian)
+```
+
+## GLMs for Community-weighted means (CWMs)
+
+- Calculated with 2017 trait data
+- again, one value per climate/treatment/block so no blocking effect included
+- Include interaction between climate and treatemnt? AIC values for some are much higher without interaction
+
+```{r}
+
+# leaf area
+LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
+shapiro.test(residuals(LA_CWM))
+summary(LA_CWM) #AIC 204.38
+
+LA_CWM_2 <- glm(data = cwm_traits_adj, weighted_la ~ climate + treatment, family = gaussian) 
+shapiro.test(residuals(LA_CWM_2)) #residuals not normal
+
+
+#SLA
+LA_SLA <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian) 
+shapiro.test(residuals(LA_SLA))
+summary(LA_SLA) #AIC 40.608
+
+LA_SLA_2 <- glm(data = cwm_traits_adj, weighted_sla ~ climate + treatment, family = gaussian) 
+shapiro.test(residuals(LA_SLA_2))
+summary(LA_SLA_2) #AIC 50.988
+
+
+# LDMC
+LA_LDMC <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
+shapiro.test(residuals(LA_LDMC))
+summary(LA_LDMC) #AIC 95.74
+
+LA_LDMC_2 <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
+shapiro.test(residuals(LA_LDMC_2))
+summary(LA_LDMC_2) #AIC 194.34
+
+
+# Seed mass
+seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian) 
+shapiro.test(residuals(seed_mass_CWM))
+summary(seed_mass_CWM) #AIC 9
+
+seed_mass_CWM_2 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian) 
+shapiro.test(residuals(seed_mass_CWM_2)) #residuals not normal
+
+
+# leaf nitrogen
+leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
+shapiro.test(residuals(leaf_n_CWM))
+summary(leaf_n_CWM) #AIC 66.907
+
+leaf_n_CWM_2 <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
+shapiro.test(residuals(leaf_n_CWM_2)) #residuals not normal
+
+
+#summary figure (some info missing because not present in all glms)
+tab_model(LA_CWM, LA_SLA, LA_LDMC, seed_mass_CWM, leaf_n_CWM, dv.labels = c("Leaf Area CWM", "SLA CWM", "LDMC CWM", "Seed Mass CWM", "LNC CWM"))
+
+
+```
+
+## GLMs for Functional Diveristy
+
+```{r}
+
+
+```
+
