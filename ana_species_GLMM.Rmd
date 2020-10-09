@@ -1,0 +1,314 @@
+---
+title: "Species_GLMM"
+author: "Ana Miller-ter Kuile"
+date: "10/9/2020"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I'm going to do a GLMM process with your plant data (you were running individual species models, but I changed that to one model for all).
+
+```{r}
+library(tidyverse)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
+```
+
+Import the 2019 LA data:
+
+```{r}
+traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>% 
+  rename(old_names = Species) %>% #changing column names
+  rename(Species = sci_name) %>% #changing column names
+  select(Climate, Treatment, Block, Species, LA) %>% 
+  mutate(LA = as.numeric(LA)) #making sure value is numeric
+```
+
+```{r}
+traits_19 <- traits_19 %>% 
+  mutate(Species = ifelse(Species == "Trifolium microcephalum", #fixing a typo that makes factors weird
+                          "trifolium microcephalum",
+                          Species)) %>%
+  mutate(Treatment = ifelse(Treatment == "open", "Open", Treatment)) #same thing, a typo
+```
+
+From the tutorial markdown document, we have 3 steps here:
+
+1. What is my full model (What is the effect of x on y?)
+
+2. What is the "best" model of all the combinations of variables based on model selection (AICc)?
+
+3. Do my data meet the assumptions of the model distribution I've chosen, and if not, how do I fix that?
+
+# 1. What is my full model? OR What is my ecological question?
+
+For this dataset, you are wondering,
+
+**What is the effect of climate and grazing on leaf area for each species?**
+
+The first part of this is a simple lm that you have already determined
+
+`lm(LA ~ Climate * Treatment, family = gaussian)`
+
+To approach the by-species component, you will be using a random effect by species, which is a way of sayingsomething along the lines of *Because individuals of the same species are likely to be more similar to each other in LA (non-independence, a violation of assumptions of basic lms), I need to account for this lack of independence of data points by grouping my data with a random term by species.*
+
+We might even see these patterns in your data:
+
+```{r}
+ggplot(traits_19, aes(x = Species, y = LA, color = Species)) +
+  geom_boxplot() +
+  theme_bw() +
+  scale_y_log10()
+```
+
+From a visual examination, it *does* look like your species are more similar to each other in LA than to other species - so this random effect accounts for that.
+
+(You also have one really high LA value for *Bromus tectorum*, is this real or a typo? It could cause outlier problems and model fitting problems!)
+
+Another thing you've sort of assumed because continuous data (a good assumption, I might add) is that your data should fit a Gaussian distribution. This is also known as a "normal" distribution - which just means that your response data look like a pretty little bell curve. Let's look!
+
+```{r}
+ggplot(traits_19, aes(x = LA)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+It does look like you might have some skew that you may have to correct by using a transformation (rule of thumb: ok to transform continuous data, not so much count data), but some of that is being caused by that one really weird number, so if that was a typo could be rectified.
+
+```{r}
+traits_19 %>%
+  filter(LA < 2000) %>%
+  ggplot(aes(x = LA)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+Still some skew that we might have to think about down the road- but we'll see! (I think we could fix with a log transformation!)
+
+The model now will look like this (I'm using `glmmTMB()` but you can use `lme4` too)
+
+```{r}
+model <- glmmTMB(LA ~ Climate * Treatment + (1|Species), 
+              data = traits_19)
+```
+
+Part of the reason I think you may have been getting a model convergence error is due to the fact that treatment looked like it had 4 levels ("open" and "Open" as separate levels) and as a result of that, there was complete separation such that the model couldn't predict anything. However, the glmmTMB package also has a great [troubleshooting vignette](https://cran.r-project.org/web/packages/glmmTMB/vignettes/troubleshooting.html) you might be able to explore for answers. 
+
+# 2. What is the "best" model of all the combinations of variables based on model selection (AICc)?
+
+Now let's do the model comparison step, which as I had mentioned before uses the `dredge()` function in `MuMIn`.
+
+```{r}
+dredge(model)
+```
+
+In this output, it ranks models by their performance with the "best" at the top and then each `+` indicates a parameter that is in that model. And according to this, a null model with no parameters is best, but a model with treatment is less than 2 AIC values away, where we might think it could be a marginally okay model (also, the Climate model is in there too). But let's see! (*Aside: AIC values are in a log10 scale, which then makes a difference of 2 AIC points actually two orders of magnitude - so actually a pretty big difference, even if the values are so "close"*)
+
+```{r}
+model2 <- glmmTMB(LA ~ Treatment + (1|Species), 
+              data = traits_19)
+```
+
+At this point it's good to stop and say - okay, I have a model, which is the "best" model of all the models I've chosen. However, this may not be a *good* model if the data don't actually meet the assumptions of the distribution I chose (here, normal/Gaussian). So before we do any further steps, let's go ahead and just validate that this is an okay model to start interpreting statistically and ecologically (e.g. p-values, $R^2$ values, relationships, etc) 
+
+# 3. Do my data meet the assumptions of the model distribution I've chosen, and if not, how do I fix that?
+
+I use the `DHARMa` package to do model assumptions, which is a fancy package that does a bunch of simulations of distributions based on your data and model and gives confidence intervals for how likely your data are to actually meet the assumption of your model (right now we are assuming a nice normal bell-shaped curve, so we're doing this to ask whether our data are significantly different from that normal distribution)
+
+```{r}
+fit <- simulateResiduals(model2, plot= T)
+```
+
+Maybe you've seen these Q-Q plots before - but this is indicating that we've got some serious deviation from normality, and hence, model assumptions. What we would like to see is dots following that red line - instead we see some funny little serpent. This could be due to two reasons:
+
+  - The skew we saw in the distribution graph
+  
+  - The one *Bromus tectorum* outlier data point (check that this is real?)
+  
+If it's the first problem, we can try to fix the problem by transforming our response data, and trying again. This means we start back at Step 1, making a new full model.
+
+# 1b. Full model with log transformed response
+
+If we log transform the response (LA), maybe we can get our data to be normal so fit a Gaussian distribution. Down the line, `emmeans()` doesn't like log transformations in the model itself, so I'm going to just create a log-transformed LA value.
+
+```{r}
+traits_19 <- traits_19 %>%
+  mutate(log_LA = log(LA))
+```
+
+```{r}
+ggplot(traits_19, aes(x = log_LA)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+We can see that this transformation has made our data more normal. Let's see if we can get a nice model fit.
+
+```{r}
+model3 <- glmmTMB(log_LA ~ Climate * Treatment + (1|Species), 
+              data = traits_19)
+```
+
+# 2b. "Best" model
+
+We can re-do the dredge function now
+
+```{r}
+dredge(model3)
+```
+
+And now we're getting a slightly different result, with the best model being climate only, followed very closely by a bunch of other models, including the full model. In this case, I would try the model that is "best" with model diagnostics, and if the Q-Q plot looks wonky - maybe try the model with both without the interaction and see if it fixes any of that deviation (it can sometimes).
+
+I think this is maybe when people start doing things like "model averaging" but I feel like... yeah... I don't understand what coefficients are when folks do that so I don't do it. Remember - all approaches are *wrong* somehow, so choosing one and being consistent and transparent is fine. 
+
+# 3b. Does it meet assumptions
+
+```{r}
+model4 <- glmmTMB(log_LA ~ Climate + (1|Species), 
+              data = traits_19)
+```
+
+```{r}
+fit_log <- simulateResiduals(model4, plot =T)
+```
+
+What I'm seeing from model 4 is that it is still deviating a lot from that nice, straight Q-Q plot line. We can try that next best model with both terms to see if it helps
+
+```{r}
+model5 <- glmmTMB(log_LA ~ Climate + Treatment + (1|Species), 
+              data = traits_19)
+```
+
+```{r}
+fit_log2 <- simulateResiduals(model5, plot =T)
+```
+
+```{r}
+model_herb <- glmmTMB(log_LA ~ Treatment + (1|Species), 
+              data = traits_19)
+```
+
+```{r}
+fit_log3 <- simulateResiduals(model_herb, plot =T)
+```
+
+Damn - as always with ecology datasets, everything is always so much troubleshooting.
+
+Something I'm wondering at this point is if that one really high *Bromus tectorum* value is a typo, or if not, if it is causing the problems anyway.
+
+# 1c. New model, remove outlier
+
+```{r}
+traits_19_ol <- traits_19 %>%
+  filter(LA < 2000)
+
+model6 <- glmmTMB(log_LA ~ Climate * Treatment + (1|Species), 
+              data = traits_19_ol)
+```
+
+# 2c. Model selection without outlier
+
+```{r}
+dredge(model6)
+```
+
+Still getting some similar results, with the climate-only model being best, followed closely by the Climate + Treatment model.
+
+# 3c. Model assumptions without outlier
+
+```{r}
+model7 <- glmmTMB(log_LA ~ Climate + (1|Species), 
+              data = traits_19_ol)
+```
+
+```{r}
+fit <- simulateResiduals(model7, plot = T)
+```
+This plot is actually starting to look *ok*. It's not great - but not looking super duper scary. For fun, let's just see if the model with that added term helps at all. 
+
+```{r}
+model8 <- glmmTMB(log_LA ~ Climate + Treatment + (1|Species), 
+              data = traits_19_ol)
+```
+
+```{r}
+fit <- simulateResiduals(model8, plot = T)
+```
+It kind of made it worse- scratch that!
+
+Revisiting a data vis:
+
+```{r}
+ggplot(traits_19_ol, aes(x = Climate, y = log_LA, fill = Species)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~Species)
+```
+Part of the issue here - is that you don't have all species across all climates. However, from this graph, it looks like you have a good number (mostly grasses?) that are present across all climates? So something you could do going forward is to run a model with `Climate*Treatment` *just* for these species? 
+
+# 1d. fit only species across climates
+
+```{r}
+traits_sp <- traits_19_ol %>%
+  filter(Species %in% c("Bromus diandrus", "Bromus hordeaceus", "Bromus_tectorum", "Festuca myuros",
+                        "Galium aparine", "Hordeum murinum"))
+```
+
+
+```{r}
+model9 <- glmmTMB(LA ~ Climate * Treatment + (1|Species),
+                  data = traits_sp)
+```
+
+# 2d. "Best" model with subset species
+
+```{r}
+dredge(model9)
+```
+
+From this the null model is best, followed fairly closely by a model with just treatment. In general I go with the most parsimonious model at this point, but you can also talk about the second best model, but highlighting that it is not an improvement over the null model and also any results from it will be marginal at best. IF you want to check a null model you can run:
+
+# 3d: Model diagnostics for subset model
+
+```{r}
+model10 <- glmmTMB(LA ~ 1 + (1|Species),
+                  data = traits_sp)
+
+fit <- simulateResiduals(model10, plot=T)
+```
+You could also report marginal support for this model:
+
+```{r}
+model11 <- glmmTMB(LA ~ Treatment + (1|Species),
+                  data = traits_sp)
+
+fit <- simulateResiduals(model11, plot=T)
+```
+
+# 4. what to put in the paper
+
+If  this was the model you chose, you could report, you can also do pairwise marginal mean comparisons, which is just a way to treat this like an ANOVA doing post hoc analyses (since your predictors are categorical)
+
+```{r}
+em <- emmeans(model11, "Treatment")
+pairs(em)
+```
+
+And you'll see that there really isn't a significant difference between all your plots with this. (look at the GLM tutorial for example text you could use for describing this process)
+
+# 5. next steps
+
+I feel like this still isn't a great model, because it basically forced you to get rid of half of your data, which is not cool. I have an idea on how to solve this, which is:
+
+Rather than `Species` as a random term, giving them a higher grouping variable such as growth form, including grasses, forbs, and shrubs? This way maybe you have some data for each growth form across all your levels of climate and treatment? Alternatively, you could think about native status (not sure if these are all non-natives), but you could potentially have some life history expectations based on providence. I would choose one of these approaches and not try to do both - you will run the risk of overfitting the model. But let me know if you want to chat about it!
