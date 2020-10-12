@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(ggplot2)
 library(lme4)
 library(DHARMa)
 library(glmmTMB)
@@ -106,6 +107,14 @@ for_FD <- cwm_traits <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
   left_join(other_traits, by = "species_name") %>% 
   select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n)
 ```
+
+## Data exploration
+
+```{r}
+
+
+```
+
 
 ## GLMs for individual species change
 
@@ -209,9 +218,11 @@ tab_model(LA_CWM, LA_SLA, LA_LDMC, seed_mass_CWM, leaf_n_CWM, dv.labels = c("Lea
 
 ```
 
-## GLMs for Functional Diveristy
+## Functional Diveristy
+- Need to make datasheets in correct format for FD package
 
 ```{r}
+
 
 
 ```
