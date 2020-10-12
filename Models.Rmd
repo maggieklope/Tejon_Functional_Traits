@@ -10,13 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(ggplot2)
-library(lme4)
-library(DHARMa)
-library(glmmTMB)
 library(stats)
-library(emmeans)
 library(sjPlot)
 library(FD)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
 
 # Loading 2019 abundance data calculated from transect surveys
 abund_2019 <-  read_csv("Datasheets/2019_abundance_sci_names.csv") %>% 
@@ -161,59 +161,119 @@ glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",]
 
 - Calculated with 2017 trait data
 - again, one value per climate/treatment/block so no blocking effect included
-- Include interaction between climate and treatemnt? AIC values for some are much higher without interaction
+- Include interaction between climate and treatment? AIC values for some are much higher without interaction
+
+1) Model:
+
+**What is the effect of climate and grazing community-weighted means?**
+
+`lm(LA ~ Climate * Treatment, family = gaussian)`
 
 ```{r}
 
+cwm_traits_adj %>%
+  pivot_longer(cols = weighted_la:weighted_n,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~traits, scales = "free")
+
+```
+
+```{r}
+ggplot(cwm_traits_adj, aes(x = weighted_la)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(cwm_traits_adj, aes(x = weighted_sla)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(cwm_traits_adj, aes(x = weighted_ldmc)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(cwm_traits_adj, aes(x = weighted_seed_mass)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(cwm_traits_adj, aes(x = weighted_n)) +
+  geom_histogram() +
+  theme_bw()
+
+#trying log transformation for seed mass & leaf n
+cwm_traits_adj <- cwm_traits_adj %>% 
+  mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
+  mutate(log_n = log(weighted_n))
+
+
+```
+
+
+2) Best-fit model:
+
+```{r}
 # leaf area
-LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
-shapiro.test(residuals(LA_CWM))
-summary(LA_CWM) #AIC 204.38
-
-LA_CWM_2 <- glm(data = cwm_traits_adj, weighted_la ~ climate + treatment, family = gaussian) 
-shapiro.test(residuals(LA_CWM_2)) #residuals not normal
-
+LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
+dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
 
 #SLA
-LA_SLA <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian) 
-shapiro.test(residuals(LA_SLA))
-summary(LA_SLA) #AIC 40.608
-
-LA_SLA_2 <- glm(data = cwm_traits_adj, weighted_sla ~ climate + treatment, family = gaussian) 
-shapiro.test(residuals(LA_SLA_2))
-summary(LA_SLA_2) #AIC 50.988
-
+SLA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian) 
+dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
 
 # LDMC
-LA_LDMC <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
-shapiro.test(residuals(LA_LDMC))
-summary(LA_LDMC) #AIC 95.74
-
-LA_LDMC_2 <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
-shapiro.test(residuals(LA_LDMC_2))
-summary(LA_LDMC_2) #AIC 194.34
-
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
+dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
 
 # Seed mass
-seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian) 
-shapiro.test(residuals(seed_mass_CWM))
-summary(seed_mass_CWM) #AIC 9
+seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian) 
+dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
+seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian) 
 
-seed_mass_CWM_2 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian) 
-shapiro.test(residuals(seed_mass_CWM_2)) #residuals not normal
-
+#Log seed mass
+log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian)
+dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
+log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian)
 
 # leaf nitrogen
-leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
-shapiro.test(residuals(leaf_n_CWM))
-summary(leaf_n_CWM) #AIC 66.907
+leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
+dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
+leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
 
-leaf_n_CWM_2 <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
-shapiro.test(residuals(leaf_n_CWM_2)) #residuals not normal
+# log leaf nitrogen
+log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian) 
+dredge(log_n_CWM) #get: Fixed terms are "cond((Int))" and "disp((Int))"
+log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate + treatment, family = gaussian) 
+dredge(log_n_CWM)
 
 
-#summary figure (some info missing because not present in all glms)
-tab_model(LA_CWM, LA_SLA, LA_LDMC, seed_mass_CWM, leaf_n_CWM, dv.labels = c("Leaf Area CWM", "SLA CWM", "LDMC CWM", "Seed Mass CWM", "LNC CWM"))
+# summary figure (some info missing because not present in all glms)
+# tab_model(LA_CWM, SLA_CWM, LDMC_CWM, seed_mass_CWM, leaf_n_CWM, dv.labels = c("Leaf Area CWM", "SLA CWM", "LDMC CWM", "Seed Mass CWM", "LNC CWM"))
+
+
+```
+
+3) Model assumptions/data distribution
+
+```{r}
+simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
+
+simulateResiduals(SLA_CWM, plot= T) #looks good
+
+simulateResiduals(LDMC_CWM, plot= T) #looks good
+
+simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
+
+#log seed mass
+simulateResiduals(log_seed_mass, plot= T) #looks good
+
+simulateResiduals(leaf_n_CWM, plot= T) #is this good enough? one of the model predictions seems to be off
+
+#log_n
+simulateResiduals(log_n_CWM, plot= T) #looks good?
 
 
 ```
