@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Functional Trait Models"
 author: "Maggie Klope"
 date: "10/7/2020"
 output: html_document
@@ -17,6 +17,7 @@ library(DHARMa) #model diagnostics
 library(glmmTMB) #model fitting
 library(MuMIn) #model summaries and comparisons
 library(emmeans) #post-hoc analyses
+# library(performance) #for R2 values
 
 # Loading 2019 abundance data calculated from transect surveys
 abund_2019 <-  read_csv("Datasheets/2019_abundance_sci_names.csv") %>% 
@@ -31,7 +32,11 @@ traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>%
   rename(old_names = Species) %>% #changing column names
   rename(Species = sci_name) %>% #changing column names
   select(Climate, Treatment, Block, Species, LA) %>% 
-  mutate(LA = as.numeric(LA)) #making sure value is numeric
+  mutate(LA = as.numeric(LA)) %>% #making sure value is numeric
+  mutate(Species = ifelse(Species == "Trifolium microcephalum", #fixing a typo that makes factors weird
+                          "trifolium microcephalum",
+                          Species)) %>%
+  mutate(Treatment = ifelse(Treatment == "open", "Open", Treatment)) #same thing, a typo
 
 abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate"#changing name of int climate
 
@@ -39,28 +44,25 @@ abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate"#changing name 
 # traits_17 <- read_csv("final_traits_and_abundances.csv")
 
 # TRY Database search to fill in missing species
-TRY_DB <- read_csv("Datasheets/TRY_DB_june_2020.csv") %>% 
-  filter(ValueKindName == c("Single", "Mean", "Best estimate")) %>% 
-  #unique() %>% 
-  dplyr::group_by(TraitName, AccSpeciesName) %>%
-  summarize(mean_value = mean(StdValue)) %>% 
-  rename(species_name = AccSpeciesName)
+# TRY_DB <- read_csv("Datasheets/TRY_DB_june_2020.csv") %>% 
+#   filter(ValueKindName == c("Single", "Mean", "Best estimate")) %>% 
+#   #unique() %>% 
+#   dplyr::group_by(TraitName, AccSpeciesName) %>%
+#   summarize(mean_value = mean(StdValue)) %>% 
+#   rename(species_name = AccSpeciesName)
 
 # write_csv(TRY_DB, "TRY_DB_summary.csv")
 
 # reading in 2017 functional trait datasheet
-md <- read_csv("Datasheets/MasterDataSheet(9_29_2020).csv") %>% 
-  select(climate, treatment, species_name, individual, wet_weight_g, wet_weight_mg, dry_weight_g, dry_weight_mg, Area_Leaf_total_mm2, Average_Leaf_Area, average_dry_weight, average_wet_weight) %>% 
+md <- read_csv("Datasheets/MasterDataSheet(10_18_2020).csv") %>% 
+  select(climate, treatment, species_name, individual, wet_weight_g, wet_weight_mg, dry_weight_g, dry_weight_mg, Area_Leaf_total_mm2, Average_Leaf_Area) %>% 
   mutate(wet_weight_mg = as.numeric(wet_weight_mg)) %>% 
   mutate(wet_weight_g = as.numeric(wet_weight_g)) %>% 
   mutate(dry_weight_g = as.numeric(dry_weight_g)) %>% 
   mutate(dry_weight_mg = as.numeric(dry_weight_mg)) %>% 
   mutate(leaf_area = as.numeric(Average_Leaf_Area)) %>% 
   mutate(sla = Area_Leaf_total_mm2 / dry_weight_mg) %>% #computing sla
-  mutate(ldmc = dry_weight_mg / wet_weight_g) %>% #computing ldmc
-  select(-average_wet_weight, -average_dry_weight)
-  #drop_na(leaf_area) %>% 
-  #filter(leaf_area != 0)
+  mutate(ldmc = dry_weight_mg / wet_weight_g) #computing ldmc
 
 #finding average values for 2017 from the masterdatasheet
 traits_2017 <- md %>% 
@@ -102,19 +104,8 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
   select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
-#making a df just for functional diveristy calculations
-for_FD <- cwm_traits <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
-  left_join(other_traits, by = "species_name") %>% 
-  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n)
-```
-
-## Data exploration
-
-```{r}
-
 
 ```
-
 
 ## GLMs for individual species change
 
@@ -122,28 +113,171 @@ for_FD <- cwm_traits <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 - Some species are present in all climate/treatment, but some are not
 - Some species could be done with an lm after a log transformation
 
+### Models:
+
+**What is the effect of climate and grazing on individual species trait changes?**
+
+`glm(trait ~ Climate * Treatment, family = gaussian)`
+
+- planning to do for LA, SLA, and LDMC (from field collection in 2019) for a subset of species
+- could do for seed mass and leaf N, but those values would be from TRY Database
+- species chosen as those that are present across as many climate/treatment combinations as possible
+- unfortunately, I scanned and weighed the leaves together to get averages, so I have lost the ability to add block to my models
+- need to think of how I would deal with multiple comparisons (bonferroni correction?)
+
 ```{r}
-#Bromus diandrus (grass)
-glm_bro_dia <- glm(data = traits_19[traits_19$Species == "Bromus diandrus",], LA ~ Climate * Treatment, family = gaussian)
+#writing function to take species name and test model with dredge
 
-# Festuca myuros (grass)
-glm_fes_myu <- glm(data = traits_19[traits_19$Species == "Festuca myuros",], LA ~ Climate * Treatment,  family = gaussian)
+model_test <- function(species_name){
+  temp_data <- traits_19[traits_19$Species == species_name,]
+  glm <- glmmTMB(data = temp_data, LA ~ Climate * Treatment, family = gaussian)
+  print(dredge(glm))
+}
 
-# Bromus hordeacous (grass)
-glm_bro_ho <- glm(data = traits_19[traits_19$Species == "Bromus hordeaceus",], LA ~ Climate * Treatment, family = gaussian)
+```
 
-# Bromus tectorum (grass)
-glm_bro_tec <- glm(data = traits_19[traits_19$Species == "Bromus tectorum",], LA ~ Climate * Treatment, family = gaussian)
+#### Bromus diandrus
 
-# Hordeum murinum (grass)
-glm_hor_mur <- glm(data = traits_19[traits_19$Species == "Hordeum murinum",], LA ~ Climate * Treatment, family = gaussian)
+- invasive grass
+- no difference in LA between climate treatments
+- model summary says that mesic is significantly lower than Arid, but that doesn't show when I use emmeans
 
-# Erodium cicutarium (forb)
-glm_ero_cic <- glm(data = traits_19[traits_19$Species == "Erodium cicutarium",], LA ~ Climate * Treatment, family = gaussian)
+```{r}
+model_test("Bromus diandrus") #best model includes only intercept, but including climate also within AIC range
 
-# Galium aparine (forb)
-glm_gal_apa <- glm(data = traits_19[traits_19$Species == "Galium aparine",], LA ~ Climate * Treatment, family = gaussian)
+bro_dia <- traits_19[traits_19$Species == "Bromus diandrus",]
+glm_bro_dia <- glmmTMB(data = bro_dia, LA ~ Climate, family = gaussian)
 
+simulateResiduals(glm_bro_dia, plot= T) # qq plot doesn't look that great
+shapiro.test(residuals(glm_bro_dia)) # but residuals are normal (barely)
+
+summary(glm_bro_dia) # shows difference between Arid and Mesic
+emmeans(glm_bro_dia, pairwise ~ Climate) #but emmeans doesn't show a significant difference...
+```
+
+#### Festuca myuros
+
+- non-native grass
+- log transformed
+- Arid > Intermediate
+- Arid > Mesic
+- No significant difference between Int and Mesic
+
+```{r}
+# model_test("Festuca myuros") #get model convergence error
+
+fes_myu <- traits_19[traits_19$Species == "Festuca myuros",]
+glm_fes_myu <- glmmTMB(data = fes_myu, LA ~ Climate + Treatment,  family = gaussian) # trying without interaction
+dredge(glm_fes_myu) # remove treatment from model
+glm_fes_myu <- glmmTMB(data = fes_myu, LA ~ Climate,  family = gaussian)
+
+simulateResiduals(glm_fes_myu, plot=T)
+shapiro.test(residuals(glm_fes_myu)) #not normal
+
+# using log transformation
+fes_myu <- fes_myu %>% 
+  mutate(log_LA = log(LA))
+
+# log_fes_myu <- glmmTMB(data = fes_myu, log_LA ~ Climate * Treatment,  family = gaussian) # convergence error
+log_fes_myu <- glmmTMB(data = fes_myu, log_LA ~ Climate + Treatment,  family = gaussian)
+dredge(log_fes_myu) #drop treatment
+log_fes_myu <- glmmTMB(data = fes_myu, log_LA ~ Climate,  family = gaussian)
+
+simulateResiduals(log_fes_myu, plot=T)
+shapiro.test(residuals(log_fes_myu)) #normal
+
+summary(log_fes_myu)
+log_fes_myu_em <- emmeans(log_fes_myu, ~Climate)
+pairs(log_fes_myu_em)
+
+```
+
+#### Bromus diandrus
+```{r}
+model_test("Bromus hordeaceus") #need to do averaging
+
+bro_ho <- traits_19[traits_19$Species == "Bromus hordeaceus",]
+
+glm_bro_ho <- glmmTMB(data = bro_ho, LA ~ Climate * Treatment, family = gaussian)
+dredge(glm_bro_ho) #need to do averaging
+
+```
+
+#### Bromus tectorum
+
+- invasive grass
+
+```{r}
+bro_tec <- traits_19[traits_19$Species == "Bromus tectorum",]
+
+glm_bro_tec <- glmmTMB(data = bro_tec, LA ~ Climate * Treatment, family = gaussian)
+dredge(glm_bro_tec) # what do you do when best model only includes intercept?
+
+```
+
+#### Hordeum murium
+
+- invasive grass
+- model only includes Treatment
+- Total > Partial
+
+```{r}
+hor_mur <- traits_19[traits_19$Species == "Hordeum murinum",]
+
+# glm_hor_mur <- glmmTMB(data = hor_mur, LA ~ Climate * Treatment, family = gaussian) #convergence
+glm_hor_mur <- glmmTMB(data = hor_mur, LA ~ Climate + Treatment, family = gaussian)
+dredge(glm_hor_mur) # best fit includes treatment only
+glm_hor_mur <- glmmTMB(data = hor_mur, LA ~ Treatment, family = gaussian)
+
+# does data fit model?
+simulateResiduals(glm_hor_mur, plot=T) # doesn't look that great
+shapiro.test(residuals(glm_hor_mur)) # but residuals are normal
+
+# model results
+summary(glm_hor_mur)
+emmeans(glm_hor_mur, pairwise ~ Treatment)
+
+```
+
+#### Erodium cicutarium
+
+- invasive forb
+
+```{r}
+
+ero_cic <- traits_19[traits_19$Species == "Erodium cicutarium",]
+
+glm_ero_cic <- glmmTMB(data = ero_cic, LA ~ Climate * Treatment, family = gaussian)
+dredge(glm_ero_cic) # best model includes intercept only, but model with climate also has similar AIC value
+glm_ero_cic <- glmmTMB(data = ero_cic, LA ~ Climate, family = gaussian)
+
+# does data fit model?
+simulateResiduals(glm_ero_cic, plot=T) # really messed up
+
+```
+
+#### Galium aparine
+
+- native forb
+
+```{r}
+
+model_test("Galium aparine") #get convergence
+
+gal_apa <- traits_19[traits_19$Species == "Galium aparine",]
+glm_gal_apa <- glmmTMB(data = gal_apa, LA ~ Climate * Treatment, family = gaussian)
+dredge(glm_gal_apa) #best model does not include treatment
+glm_gal_apa <- glmmTMB(data = gal_apa, LA ~ Climate, family = gaussian)
+
+simulateResiduals(glm_gal_apa, plot=T)
+shapiro.test(residuals(glm_gal_apa)) # normal
+
+summary(glm_gal_apa)
+emmeans(glm_gal_apa, pairwise ~ Climate)
+
+```
+
+```{r}
 # Plagiobothrys nothofulvus (forb)
 glm_pla_not <- glm(data = traits_19[traits_19$Species == "Plagiobothrys nothofulvus",], LA ~ Climate * Treatment, family = gaussian)
 
@@ -157,133 +291,34 @@ glm_sym_mol <- glm(data = traits_19[traits_19$Species == "Symphoricarpos_mollis"
 glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",], LA ~ Climate * Treatment, family = gaussian)
 ```
 
-## GLMs for Community-weighted means (CWMs)
-
-- Calculated with 2017 trait data
-- again, one value per climate/treatment/block so no blocking effect included
-- Include interaction between climate and treatment? AIC values for some are much higher without interaction
-
-1) Model:
-
-**What is the effect of climate and grazing community-weighted means?**
-
-`lm(LA ~ Climate * Treatment, family = gaussian)`
+## By functional group
 
 ```{r}
 
-cwm_traits_adj %>%
-  pivot_longer(cols = weighted_la:weighted_n,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_wrap(~traits, scales = "free")
-
-```
-
-```{r}
-ggplot(cwm_traits_adj, aes(x = weighted_la)) +
-  geom_histogram() +
-  theme_bw()
-
-ggplot(cwm_traits_adj, aes(x = weighted_sla)) +
-  geom_histogram() +
-  theme_bw()
-
-ggplot(cwm_traits_adj, aes(x = weighted_ldmc)) +
-  geom_histogram() +
-  theme_bw()
-
-ggplot(cwm_traits_adj, aes(x = weighted_seed_mass)) +
-  geom_histogram() +
-  theme_bw()
-
-ggplot(cwm_traits_adj, aes(x = weighted_n)) +
-  geom_histogram() +
-  theme_bw()
-
-#trying log transformation for seed mass & leaf n
-cwm_traits_adj <- cwm_traits_adj %>% 
-  mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
-  mutate(log_n = log(weighted_n))
 
 
 ```
 
 
-2) Best-fit model:
-
 ```{r}
-# leaf area
-LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
-dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
-
-#SLA
-SLA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian) 
-dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
-
-# LDMC
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
-dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
-
-# Seed mass
-seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian) 
-dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
-seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian) 
-
-#Log seed mass
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian)
-dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian)
-
-# leaf nitrogen
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
-dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
-
-# log leaf nitrogen
-log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian) 
-dredge(log_n_CWM) #get: Fixed terms are "cond((Int))" and "disp((Int))"
-log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate + treatment, family = gaussian) 
-dredge(log_n_CWM)
-
-
-# summary figure (some info missing because not present in all glms)
-# tab_model(LA_CWM, SLA_CWM, LDMC_CWM, seed_mass_CWM, leaf_n_CWM, dv.labels = c("Leaf Area CWM", "SLA CWM", "LDMC CWM", "Seed Mass CWM", "LNC CWM"))
-
-
-```
-
-3) Model assumptions/data distribution
-
-```{r}
-simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
-
-simulateResiduals(SLA_CWM, plot= T) #looks good
-
-simulateResiduals(LDMC_CWM, plot= T) #looks good
-
-simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
-
-#log seed mass
-simulateResiduals(log_seed_mass, plot= T) #looks good
-
-simulateResiduals(leaf_n_CWM, plot= T) #is this good enough? one of the model predictions seems to be off
-
-#log_n
-simulateResiduals(log_n_CWM, plot= T) #looks good?
-
-
-```
-
-## Functional Diveristy
-- Need to make datasheets in correct format for FD package
-
-```{r}
-
-
+# # TRY Database search to fill in missing species
+# TRY_DB_1 <- read_csv("Datasheets/TRY_DB_june_2020.csv") %>% 
+#   filter(ValueKindName %in% c("Single", "Mean", "Best estimate")) %>%
+#   select(AccSpeciesName, TraitName, StdValue) %>% 
+#   dplyr::group_by(AccSpeciesName, TraitName) %>% 
+#   mutate(StdValue = as.numeric(StdValue)) %>% 
+#   summarize(mean = mean(StdValue)) %>% 
+#   rename(species_name = AccSpeciesName)
+# 
+# TRY_DB_2 <- read_csv("Datasheets/TRY_DB_Oct-18-20.csv") %>% 
+#   filter(ValueKindName %in% c("Single", "Mean", "Best estimate")) %>%
+#   select(AccSpeciesName, TraitName, StdValue) %>% 
+#   dplyr::group_by(AccSpeciesName, TraitName) %>% 
+#   mutate(StdValue = as.numeric(StdValue)) %>% 
+#   summarize(mean = mean(StdValue)) %>% 
+#   rename(species_name = AccSpeciesName)
+# 
+# write.csv(TRY_DB_2, "TRY_DB_2.csv")
 
 ```
 

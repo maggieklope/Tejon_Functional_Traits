@@ -1,0 +1,311 @@
+---
+title: "Functional_Diversity"
+author: "Maggie Klope"
+date: "10/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(stats)
+library(sjPlot)
+library(FD)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
+# library(performance) #for R2 values
+```
+
+```{r tidy data, include=FALSE}
+#making a df just for functional diveristy calculations
+for_FD <- read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+  left_join(other_traits, by = "species_name") %>% 
+  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>% 
+  drop_na
+
+#abundance data in correct format:
+fd_abund <- function(Climate, Treatment){
+  as.matrix(for_FD %>% 
+    filter(climate == Climate) %>% 
+    filter(treatment == Treatment) %>% 
+    arrange(species_name) %>% 
+    select(Block, species_name, Abundance) %>%
+    pivot_wider(names_from = species_name, values_from = Abundance) %>%
+    replace(is.na(.), 0) %>% 
+    column_to_rownames(var = "Block"))
+}
+
+arid_open_abund <- fd_abund("Arid", "Open")
+arid_partial_abund <- fd_abund("Arid", "Partial")
+arid_total_abund  <- fd_abund("Arid", "Total")
+
+int_open_abund <- fd_abund("Intermediate", "Open")
+int_partial_abund <- fd_abund("Intermediate", "Partial")
+int_total_abund <- fd_abund("Intermediate", "Total")
+
+mesic_open_abund <- fd_abund("Mesic", "Open")
+mesic_partial_abund <- fd_abund("Mesic", "Partial")
+mesic_total_abund <- fd_abund("Mesic", "Total")
+
+# trait data in correct format:
+
+fd_traits <- function(Climate, Treatment, fd_abund_data){
+  for_FD %>% 
+    ungroup(climate, treatment) %>% 
+    filter(climate == Climate) %>% 
+    filter(treatment == Treatment) %>% 
+    select(species_name, leaf_area, sla, ldmc) %>% 
+    distinct() %>% 
+    arrange(species_name) %>% 
+    column_to_rownames(var = "species_name") 
+  
+}
+
+arid_open_trait <- fd_traits("Arid", "Open", arid_open_abund)
+arid_partial_trait <- fd_traits("Arid", "Partial", arid_partial_abund)
+arid_total_trait <- fd_traits("Arid", "Total", arid_total_abund)
+
+int_open_trait <- fd_traits("Intermediate", "Open", int_open_abund)
+int_partial_trait <- fd_traits("Intermediate", "Partial", int_partial_abund)
+int_total_trait <- fd_traits("Intermediate", "Total", int_total_abund)
+
+mesic_open_trait <- fd_traits("Mesic", "Open", mesic_open_abund)
+mesic_partial_trait <- fd_traits("Mesic", "Partial", mesic_partial_abund)
+mesic_total_trait <- fd_traits("Mesic", "Total", mesic_total_abund)
+
+```
+
+### Functional Diversity Calculations
+```{r}
+arid_open_fd <- dbFD(x = arid_open_trait, a = arid_open_abund)
+arid_partial_fd <- dbFD(x = arid_partial_trait, a = arid_partial_abund)
+arid_total_fd <- dbFD(x = arid_total_trait, a = arid_total_abund)
+
+int_open_fd <- dbFD(x = int_open_trait, a = int_open_abund)
+int_partial_fd <- dbFD(x = int_partial_trait, a = int_partial_abund)
+int_total_fd <- dbFD(x = int_total_trait, a = int_total_abund)
+
+mesic_open_fd <- dbFD(x = mesic_open_trait, a = mesic_open_abund)
+mesic_partial_fd <- dbFD(x = mesic_partial_trait, a = mesic_partial_abund)
+mesic_total_fd <- dbFD(x = mesic_total_trait, a = mesic_total_abund)
+
+FD_arid_open <- as.data.frame(arid_open_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "arid_open_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Arid") %>% 
+  mutate(treatment = "Open") %>% 
+  mutate(FEve = arid_open_fd$FEve) %>% 
+  mutate(FDiv = arid_open_fd$FDiv) %>% 
+  mutate(FDis = arid_open_fd$FDis) %>% 
+  mutate(RaoQ = arid_open_fd$RaoQ)
+  
+FD_arid_partial <- as.data.frame(arid_partial_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "arid_partial_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Arid") %>% 
+  mutate(treatment = "Partial")%>% 
+  mutate(FEve = arid_partial_fd$FEve) %>% 
+  mutate(FDiv = arid_partial_fd$FDiv) %>% 
+  mutate(FDis = arid_partial_fd$FDis) %>% 
+  mutate(RaoQ = arid_partial_fd$RaoQ)
+
+FD_arid_total <- as.data.frame(arid_total_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "arid_total_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Arid") %>% 
+  mutate(treatment = "Total")%>% 
+  mutate(FEve = arid_total_fd$FEve) %>% 
+  mutate(FDiv = arid_total_fd$FDiv) %>% 
+  mutate(FDis = arid_total_fd$FDis) %>% 
+  mutate(RaoQ = arid_total_fd$RaoQ)
+
+FD_int_open <- as.data.frame(int_open_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "int_open_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Intermediate") %>% 
+  mutate(treatment = "Open")%>% 
+  mutate(FEve = int_open_fd$FEve) %>% 
+  mutate(FDiv = int_open_fd$FDiv) %>% 
+  mutate(FDis = int_open_fd$FDis) %>% 
+  mutate(RaoQ = int_open_fd$RaoQ)
+
+FD_int_partial <- as.data.frame(int_partial_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "int_partial_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Intermediate") %>% 
+  mutate(treatment = "Partial")%>% 
+  mutate(FEve = int_partial_fd$FEve) %>% 
+  mutate(FDiv = int_partial_fd$FDiv) %>% 
+  mutate(FDis = int_partial_fd$FDis) %>% 
+  mutate(RaoQ = int_partial_fd$RaoQ)
+
+FD_int_total <- as.data.frame(int_total_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "int_total_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Intermediate") %>% 
+  mutate(treatment = "Total")%>% 
+  mutate(FEve = int_total_fd$FEve) %>% 
+  mutate(FDiv = int_total_fd$FDiv) %>% 
+  mutate(FDis = int_total_fd$FDis) %>% 
+  mutate(RaoQ = int_total_fd$RaoQ)
+
+FD_mesic_open <- as.data.frame(mesic_open_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "mesic_open_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Mesic") %>% 
+  mutate(treatment = "Open")%>% 
+  mutate(FEve = mesic_open_fd$FEve) %>% 
+  mutate(FDiv = mesic_open_fd$FDiv) %>% 
+  mutate(FDis = mesic_open_fd$FDis) %>% 
+  mutate(RaoQ = mesic_open_fd$RaoQ)
+
+FD_mesic_partial <- as.data.frame(mesic_partial_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "mesic_partial_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Mesic") %>% 
+  mutate(treatment = "Partial") %>% 
+  mutate(FEve = mesic_partial_fd$FEve) %>% 
+  mutate(FDiv = mesic_partial_fd$FDiv) %>% 
+  mutate(FDis = mesic_partial_fd$FDis) %>% 
+  mutate(RaoQ = mesic_partial_fd$RaoQ)
+
+FD_mesic_total <- as.data.frame(mesic_total_fd$FRic) %>% 
+  rownames_to_column() %>% 
+  rename(FRic = "mesic_total_fd$FRic") %>% 
+  rename(Block = "rowname") %>% 
+  mutate(climate = "Mesic") %>% 
+  mutate(treatment = "Total")%>% 
+  mutate(FEve = mesic_total_fd$FEve) %>% 
+  mutate(FDiv = mesic_total_fd$FDiv) %>% 
+  mutate(FDis = mesic_total_fd$FDis) %>% 
+  mutate(RaoQ = mesic_total_fd$RaoQ)
+
+FD_all <- rbind(FD_arid_open, FD_arid_partial, FD_arid_total, FD_int_open, FD_int_partial, FD_int_total, FD_mesic_open, FD_mesic_partial, FD_mesic_total)
+
+```
+
+### Models
+
+#### FRic
+```{r}
+FRic <- glmmTMB(data = FD_all, FRic ~ climate * treatment, family = gaussian)
+dredge(FRic) #best model: FRic ~ climate * treatment
+
+# does data fit model?
+simulateResiduals(FRic, plot=T) # looks ok
+shapiro.test(residuals(FRic)) # residuals are normal
+
+# model results
+summary(FRic)
+
+#significatn pairs
+FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>% 
+  filter(p.value <= 0.05)
+FRic_sig_pairs
+
+#all pairs
+emmeans(FRic, pairwise ~ climate * treatment)
+
+```
+
+#### FEve
+```{r}
+FEve <- glmmTMB(data = FD_all, FEve ~ climate * treatment, family = gaussian)
+dredge(FEve) #best model includes only the intercept, so choosing next best which includes treatment only
+FEve <- glmmTMB(data = FD_all, FEve ~ treatment, family = gaussian)
+
+# does data fit model?
+simulateResiduals(FEve, plot=T) # looks ok
+shapiro.test(residuals(FEve)) # residuals are normal
+
+# model results
+summary(FEve)
+
+#significatn pairs
+FEve_sig_pairs <-  as.data.frame(pairs(emmeans(FEve, ~ treatment)))%>% 
+  filter(p.value <= 0.05)
+FEve_sig_pairs
+
+#all pairs
+emmeans(FEve, pairwise ~ treatment)
+
+```
+
+#### FDiv
+
+```{r}
+FDiv <- glmmTMB(data = FD_all, FDiv ~ climate * treatment, family = gaussian)
+dredge(FDiv) #best model: FDiv ~ climate * treatment
+
+# does data fit model?
+simulateResiduals(FDiv, plot=T) # looks ok
+shapiro.test(residuals(FDiv)) # residuals are  normal
+
+# model results
+summary(FDiv)
+
+#significant pairs
+FDiv_sig_pairs <-  as.data.frame(pairs(emmeans(FDiv, ~ climate * treatment)))%>% 
+  filter(p.value <= 0.05)
+FDiv_sig_pairs
+
+#all pairs
+emmeans(FDiv, pairwise ~ climate * treatment)
+```
+
+#### FDis
+```{r}
+FDis <- glmmTMB(data = FD_all, FDis ~ climate * treatment, family = gaussian)
+dredge(FDis) #best model: FDis ~ climate * treatment
+
+# does data fit model?
+simulateResiduals(FDis, plot=T) # looks ok
+shapiro.test(residuals(FDis)) # residuals are normal
+
+# model results
+summary(FDis)
+
+#significatn pairs
+FDis_sig_pairs <-  as.data.frame(pairs(emmeans(FDis, ~ climate * treatment)))%>% 
+  filter(p.value <= 0.05)
+FDis_sig_pairs
+
+#all pairs
+emmeans(FDis, pairwise ~ climate * treatment)
+
+```
+
+#### RaoQ
+
+```{r}
+RaoQ <- glmmTMB(data = FD_all, RaoQ ~ climate * treatment, family = gaussian)
+dredge(RaoQ) #best model: RaoQ ~ climate * treatment
+
+# does data fit model?
+simulateResiduals(RaoQ, plot=T) # Looks like there is a weird pattern
+shapiro.test(residuals(RaoQ)) # but residuals are normal
+
+# model results
+summary(RaoQ)
+
+#significatn pairs
+RaoQ_sig_pairs <-  as.data.frame(pairs(emmeans(RaoQ, ~ climate * treatment)))%>% 
+  filter(p.value <= 0.05)
+RaoQ_sig_pairs
+
+#all pairs
+emmeans(RaoQ, pairwise ~ climate * treatment)
+
+```

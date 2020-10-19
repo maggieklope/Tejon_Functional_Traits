@@ -1,44 +1,44 @@
-﻿species_name,seed_mass,leaf_n,
+﻿species_name,seed_mass,leaf_n,Notes
 Acmispon wrangelianus,2.061,30.9,
-Asteraceae sp.,,20.06626306,
+Asteraceae sp.,0.8,20.06626306,"Seed mass average of native and non-native seed mass from: Daws, M. I., et al. ""Do invasive species have bigger seeds? Evidence from intra-and inter-specific comparisons."" South African Journal of Botany 73.1 (2007): 138-143."
 Astragalus sp.,4.226666667,9.858709677,
 Avena fatua,15.70723144,19.45,
 Bromus diandrus,11.76333333,21.969,
-Bromus hordeaceus,,,
-Bromus madritensis ssp. Ruben,2.89,,
+Bromus hordeaceus,2.211748298,26.00547071,
+Bromus madritensis ssp. Ruben,2.89,28.556,
 Bromus tectorum,3.064203961,24.24,
-Calandrinia ciliata,0.87,,
+Calandrinia ciliata,0.87,21.1,
 Cerastium glomeratum,0.04970875,20.035,
-Clarkia unguiculata,0.314,,
+Clarkia unguiculata,0.314,29.6,Using clarkia purpea for leaf_n
 Claytonia perfoliata,1.155428571,,
-Collinsia childii,,,
-Collinsia parviflora,1.444799172,,
-Dichelostemma capitatum,,,
+Collinsia childii,1.611356847,,seed mass from Collinsia parviflora
+Collinsia parviflora,1.611356847,,
+Dichelostemma capitatum,1.19,22.2,
 Ericameria nauseosa,0.83,20.44030107,
 Erodium sp.,2.017492308,26.145,using erodium cicutarium
-Festuca myuros,0.44112929,,(Vulpia myuros)
+Festuca myuros,0.44112929,22.51173453,Using Festuca arundinacea for leaf_n
 Galium aparine,9.416407692,38.3,
 Gayophytum diffusum ssp. Parviflorum,0.29,,seed mass from Gayophytum diffusum
-Gilia tricolor,0.470666667,,
+Gilia tricolor,0.470666667,16.5,
 Hordeum murinum,8.551111111,30.5,
 Hosackia crassifolia var. crassifolia,7.737402296,,seed mass from Hosackia crassifolia
 Leptosiphon ciliatus,,,
-Lupinus bicolor,9.053166667,,
-Medicago polymorpha,3.938583333,,
-Melica californica,,20.5,
-Mimulus subsecundus,,,
+Lupinus bicolor,9.053166667,31.65,
+Medicago polymorpha,3.938583333,41.3,
+Melica californica,1.367220612,20.5,
+Mimulus subsecundus,0.042321256,,seed mass is from Mimulus cardinalis
 Nemophila menziesii,2.6846,,
 Penstemon laetus,1.828,,
-Phacelia sp.,,,
-Pholistoma auritum,,,
+Phacelia sp.,0.796067589,55.52614715,Values from an average of all the Phacelia species present on Tejon Conservancy Floral guide that had data on TRY; using Phacelia tanacetifolia for leaf_n
+Pholistoma auritum,8.12125,,
 Plagiobothrys sp.,1.294,1.293666667,used Plagiobothrys nothofulvus
 Prunus virginiana,76.73166667,19.5,
 Ranunculus californicus,2.62,22.33572222,
-Ribes californicum var. hesperium,1.688,,
-Stellaria sp,,,
+Ribes californicum var. hesperium,1.688,19.86786112,leaf_n is Ribes californicum
+Stellaria sp,0.349631247,25.98135282,Values from an average of all the Stellaria species present on Tejon Conservancy Floral guide that had data on TRY
 Stipa pulchra,5.757040459,10.9,(Nasella Pulchra)
 Symphoricarpos mollis,7.849,16.5,
-Trifolium sp.,0.963,,Used trifolium microcephalum
-Triteleia ixioides,,,
+Trifolium sp.,0.963,36.7,"Used trifolium microcephalum for seed mass, Trifolium albopurpureum for leaf_n"
+Triteleia ixioides,0.29,9.9,Using Triteleia laxa for leaf_n
 Urtica dioica,0.138333333,32.77428571,
-Viola purpurea,,,
+Viola purpurea,2.33,,
