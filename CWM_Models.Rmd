@@ -1,7 +1,6 @@
 ---
 title: "CWM_Models"
 author: "Maggie Klope"
-date: "10/18/2020"
 output: html_document
 ---
 
@@ -18,6 +17,8 @@ library(glmmTMB) #model fitting
 library(MuMIn) #model summaries and comparisons
 library(emmeans) #post-hoc analyses
 # library(performance) #for R2 values
+
+other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
 
 cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
@@ -45,6 +46,7 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 `lm(LA ~ Climate * Treatment, family = gaussian)`
 
 ```{r}
+
 cwm_traits_adj %>%
   pivot_longer(cols = weighted_la:weighted_n,
                names_to = "traits",
@@ -55,7 +57,7 @@ cwm_traits_adj %>%
   facet_wrap(~traits, scales = "free")
 ```
 
-```{r}
+```{r, include=FALSE}
 
 # # Looking at distributions
 # # LA and SLA are not normally distributed, but glm residuals come back as normal
@@ -102,27 +104,6 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 #### a. Leaf Area CWM
 
-```{r}
-# Best fit model:
-LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
-dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
-
-# Checking data
-simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
-shapiro.test(residuals(LA_CWM)) #normal
-
-# Model summaries
-summary(LA_CWM)
-
-LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
-
-emmeans(LA_CWM, pairwise ~ climate * treatment)
-
-```
-
-Leaf Area CWM:
-
 - Arid Total LA CWM larger than all other plots
 - Arid:
     - Arid Total > Arid Open and Arid Partial
@@ -136,7 +117,38 @@ Leaf Area CWM:
     - No difference between Int Total and Mesic Total
 - No differences between Open or Partial Treatments across climates
 
+```{r}
+# Best fit model:
+LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
+LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
+dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
+
+# Checking data
+(simulateResiduals(LA_CWM, plot= T)) #What is the red asterisk on the model predictions graph?
+(shapiro.test(residuals(LA_CWM))) #normal
+
+# Model summaries
+LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
+  filter(p.value <= 0.05)
+
+emmeans(LA_CWM, pairwise ~ climate * treatment)
+
+```
+
 #### b. SLA CWM
+
+- Once again, Arid Total larger than almost all other treatments
+- Arid trends:
+    - Arid Total larger than Arid Open and Arid Partial
+    - No significant difference between Arid Total & Partial
+- No different between Intermediate herbivore treatments
+- No difference between Mesic herbivore treatments
+- For Total exclosures, almost follows Arid > Int > Mesic
+    - Arid Total > Mesic Total
+    - Arid Total > Int total (almost significant, p=0.0546)
+    - Int Total > Mesic Total
+- Other significant difference:
+    - Arid Open > Mesic Open
 
 ```{r}
 # best fit model
@@ -155,48 +167,15 @@ SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>%
   filter(p.value <= 0.05)
 SLA_sig_pairs
 
-emmeans(LA_SLA, pairwise ~ climate * treatment)
+emmeans(SLA_CWM, pairwise ~ climate * treatment)
 
 # plot(pairs(emmeans(SLA_CWM, ~climate * treatment))) +
 #   theme_bw(base_size = 18) +
 #   geom_vline(xintercept=0, size=2, color="red")
 
 ```
-SLA CWM:
-
-- Once again, Arid Total larger than almost all other treatments
-- Arid trends:
-    - Arid Total larger than Arid Open and Arid Partial
-    - No significant difference between Arid Total & Partial
-- No different between Intermediate herbivore treatments
-- No difference between Mesic herbivore treatments
-- For Total exclosures, almost follows Arid > Int > Mesic
-    - Arid Total > Mesic Total
-    - Arid Total > Int total (almost significant, p=0.0546)
-    - Int Total > Mesic Total
-- Other significant difference:
-    - Arid Open > Mesic Open
 
 #### c. LDMC CWM
-
-```{r}
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
-dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
-
-simulateResiduals(LDMC_CWM, plot= T) #looks good
-shapiro.test(residuals(LDMC_CWM)) #normal
-
-summary(LDMC_CWM)
-
-LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
-LDMC_sig_pairs
-
-emmeans(LDMC_CWM, pairwise ~ climate * treatment)
-
-```
-LDMC CWM:
 
 - Same trend observed between all climates
 - Same trend observed between all treatments
@@ -225,7 +204,53 @@ LDMC CWM:
     - Int-Total > Mesic-Total
     - No difference between Arid-Total and Mesic-Total
 
+```{r}
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
+dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
+
+simulateResiduals(LDMC_CWM, plot= T) #looks good
+shapiro.test(residuals(LDMC_CWM)) #normal
+
+summary(LDMC_CWM)
+
+LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) %>% 
+  filter(p.value <= 0.05)
+LDMC_sig_pairs
+
+emmeans(LDMC_CWM, pairwise ~ climate)
+
+emmeans(LDMC_CWM, pairwise ~ treatment)
+
+emmeans(LDMC_CWM, pairwise ~ climate + treatment)
+
+```
+
 #### d. Seed mass CWM
+
+- same trend observed across climates
+- same trend observed across herbivore treatments
+-Arid
+    - Arid-Total > Arid-Open
+    - No difference between Arid-Open and Arid-Partial
+    - No difference between Arid-Partial and Arid-Total
+- Int
+    -Int-Total > Int-Open
+    - No difference between Int-Open and Int-Partial
+    - No difference between Int-Partial and Int-Total
+- Mesic
+    -Mesic-Total > Mesic-Open
+    - No difference between Mesic-Open and Mesic-Partial
+    - No difference between Mesic-Partial and Mesic-Total
+- Open:
+  - Int Open > Mesic-Open
+  - No difference between Arid and Mesic
+- Partial:
+    - Int-Partial > Mesic-Partial
+    - No difference between Arid and Mesic
+- Total:
+    - Int-Total > Mesic-Total
+    - No difference between Arid and Mesic
 
 ```{r}
 seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian)
@@ -253,33 +278,27 @@ emmeans(log_seed_mass, pairwise ~ climate + treatment)
 
 ```
 
-Seed mass CWM:
-
-- same trend observed across climates
-- same trend observed across herbivore treatments
--Arid
-    - Arid-Total > Arid-Open
-    - No difference between Arid-Open and Arid-Partial
-    - No difference between Arid-Partial and Arid-Total
-- Int
-    -Int-Total > Int-Open
-    - No difference between Int-Open and Int-Partial
-    - No difference between Int-Partial and Int-Total
-- Mesic
-    -Mesic-Total > Mesic-Open
-    - No difference between Mesic-Open and Mesic-Partial
-    - No difference between Mesic-Partial and Mesic-Total
-- Open:
-  - Int Open > Mesic-Open
-  - No difference between Arid and Mesic
-- Partial:
-    - Int-Partial > Mesic-Partial
-    - No difference between Arid and Mesic
-- Total:
-    - Int-Total > Mesic-Total
-    - No difference between Arid and Mesic
-
 #### e. Leaf-N CWM
+
+- No difference between any of the different herbivore treatments within climates
+- Same pattern observed between treatments at different climates
+
+- Arid:
+    - No difference between treatments at Arid
+- Int:
+     - No difference between  treatments at Int
+- Mesic:
+    - No difference between treatments at Mesic
+- Open:
+    - Arid-Open > Mesic-Open
+    - Int-Open > Mesic-Open
+- Partial:
+    - Arid-Partial > Mesic-Partial
+    - Int-Partial > Mesic-Partial
+- Total:
+    - Arid-Total > Mesic-Total
+    - Int-Total > Mesic-Total
+
 ```{r} 
 leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
 dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
@@ -306,28 +325,10 @@ LNC_sig_pairs
 
 emmeans(log_n_CWM, pairwise ~ climate + treatment)
 ```
-LNC CWM:
-
-- No difference between any of the different herbivore treatments within climates
-- Same pattern observed between treatments at different climates
-
-- Arid:
-    - No difference between treatments at Arid
-- Int:
-     - No difference between  treatments at Int
-- Mesic:
-    - No difference between treatments at Mesic
-- Open:
-    - Arid-Open > Mesic-Open
-    - Int-Open > Mesic-Open
-- Partial:
-    - Arid-Partial > Mesic-Partial
-    - Int-Partial > Mesic-Partial
-- Total:
-    - Arid-Total > Mesic-Total
-    - Int-Total > Mesic-Total
 
 ### Functional Groups
+
+- I started setting this up to look at changes in weighted means when grouped by funcitonal group, but I think it would be more interesting to use the species-level, unweighted data.
 
 ```{r}
 cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
@@ -354,30 +355,28 @@ shrub <- cwm_functional %>%
 
 #### a. grasses
 
--need to come back to
-
 ```{r}
 
-grass_la <- glmmTMB(data = grass, weighted_la ~ climate * treatment, family = gaussian)
+grass_glm <- glmmTMB(data = grass, weighted_la ~ climate * treatment, family = gaussian)
 dredge(grass_glm) # best model: trait ~ climate * treatment
 
-simulateResiduals(grass_la, plot= T) #good
-shapiro.test(residuals(grass_la)) #normal
+simulateResiduals(grass_glm, plot= T) #good
+shapiro.test(residuals(grass_glm)) #normal
 
-summary(grass_la)
-emmeans(grass_la, pairwise ~ climate + treatment)
+summary(grass_glm)
+emmeans(grass_glm, pairwise ~ climate + treatment)
 
 ```
 
 #### b. forbs
 
 ```{r}
-forb_la <- glmmTMB(data = forb, weighted_la ~ climate * treatment, family = gaussian)
-dredge(forb_la) # NEED TO DO MODEL AVERAGING
-forb_la <- glmmTMB(data = forb, weighted_la ~ treatment, family = gaussian)
+forb_glm <- glmmTMB(data = forb, weighted_la ~ climate * treatment, family = gaussian)
+dredge(forb_glm) # NEED TO DO MODEL AVERAGING
+forb_glm <- glmmTMB(data = forb, weighted_la ~ treatment, family = gaussian)
 
-simulateResiduals(forb_la, plot= T) #residuals vs. predicted not good
-shapiro.test(residuals(forb_la)) #normal
+simulateResiduals(forb_glm, plot= T) #residuals vs. predicted not good
+shapiro.test(residuals(forb_glm)) #normal
 
 ```
 
@@ -385,9 +384,9 @@ shapiro.test(residuals(forb_la)) #normal
 #### c. shrubs
 
 ```{r}
-shrub_la <- glmmTMB(data = shrub, weighted_la ~ climate * treatment, family = gaussian)
+shrub_glm <- glmmTMB(data = shrub, weighted_la ~ climate * treatment, family = gaussian)
 dredge(shrub_glm) # best model: trait ~ climate
-shrub_la <- glmmTMB(data = shrub, weighted_la ~ climate, family = gaussian)
+shrub_glm  <- glmmTMB(data = shrub, weighted_la ~ climate, family = gaussian)
 
 simulateResiduals(shrub_glm, plot= T) # can't do predicted plot
 shapiro.test(residuals(shrub_glm)) #normal
