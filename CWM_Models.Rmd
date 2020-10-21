@@ -55,7 +55,7 @@ cwm_traits_adj %>%
   facet_wrap(~traits, scales = "free")
 ```
 
-```{r}
+```{r, include=FALSE}
 
 # # Looking at distributions
 # # LA and SLA are not normally distributed, but glm residuals come back as normal
@@ -102,27 +102,6 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 #### a. Leaf Area CWM
 
-```{r}
-# Best fit model:
-LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
-dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
-
-# Checking data
-simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
-shapiro.test(residuals(LA_CWM)) #normal
-
-# Model summaries
-summary(LA_CWM)
-
-LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
-
-emmeans(LA_CWM, pairwise ~ climate * treatment)
-
-```
-
-Leaf Area CWM:
-
 - Arid Total LA CWM larger than all other plots
 - Arid:
     - Arid Total > Arid Open and Arid Partial
@@ -136,7 +115,38 @@ Leaf Area CWM:
     - No difference between Int Total and Mesic Total
 - No differences between Open or Partial Treatments across climates
 
+```{r}
+# Best fit model:
+LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
+LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
+dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
+
+# Checking data
+(simulateResiduals(LA_CWM, plot= T)) #What is the red asterisk on the model predictions graph?
+(shapiro.test(residuals(LA_CWM))) #normal
+
+# Model summaries
+LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
+  filter(p.value <= 0.05)
+
+emmeans(LA_CWM, pairwise ~ climate * treatment)
+
+```
+
 #### b. SLA CWM
+
+- Once again, Arid Total larger than almost all other treatments
+- Arid trends:
+    - Arid Total larger than Arid Open and Arid Partial
+    - No significant difference between Arid Total & Partial
+- No different between Intermediate herbivore treatments
+- No difference between Mesic herbivore treatments
+- For Total exclosures, almost follows Arid > Int > Mesic
+    - Arid Total > Mesic Total
+    - Arid Total > Int total (almost significant, p=0.0546)
+    - Int Total > Mesic Total
+- Other significant difference:
+    - Arid Open > Mesic Open
 
 ```{r}
 # best fit model
@@ -162,41 +172,8 @@ emmeans(LA_SLA, pairwise ~ climate * treatment)
 #   geom_vline(xintercept=0, size=2, color="red")
 
 ```
-SLA CWM:
-
-- Once again, Arid Total larger than almost all other treatments
-- Arid trends:
-    - Arid Total larger than Arid Open and Arid Partial
-    - No significant difference between Arid Total & Partial
-- No different between Intermediate herbivore treatments
-- No difference between Mesic herbivore treatments
-- For Total exclosures, almost follows Arid > Int > Mesic
-    - Arid Total > Mesic Total
-    - Arid Total > Int total (almost significant, p=0.0546)
-    - Int Total > Mesic Total
-- Other significant difference:
-    - Arid Open > Mesic Open
 
 #### c. LDMC CWM
-
-```{r}
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
-dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
-
-simulateResiduals(LDMC_CWM, plot= T) #looks good
-shapiro.test(residuals(LDMC_CWM)) #normal
-
-summary(LDMC_CWM)
-
-LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
-LDMC_sig_pairs
-
-emmeans(LDMC_CWM, pairwise ~ climate * treatment)
-
-```
-LDMC CWM:
 
 - Same trend observed between all climates
 - Same trend observed between all treatments
@@ -225,7 +202,53 @@ LDMC CWM:
     - Int-Total > Mesic-Total
     - No difference between Arid-Total and Mesic-Total
 
+```{r}
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
+dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
+LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
+
+simulateResiduals(LDMC_CWM, plot= T) #looks good
+shapiro.test(residuals(LDMC_CWM)) #normal
+
+summary(LDMC_CWM)
+
+LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) %>% 
+  filter(p.value <= 0.05)
+LDMC_sig_pairs
+
+emmeans(LDMC_CWM, pairwise ~ climate)
+
+emmeans(LDMC_CWM, pairwise ~ treatment)
+
+emmeans(LDMC_CWM, pairwise ~ climate + treatment)
+
+```
+
 #### d. Seed mass CWM
+
+- same trend observed across climates
+- same trend observed across herbivore treatments
+-Arid
+    - Arid-Total > Arid-Open
+    - No difference between Arid-Open and Arid-Partial
+    - No difference between Arid-Partial and Arid-Total
+- Int
+    -Int-Total > Int-Open
+    - No difference between Int-Open and Int-Partial
+    - No difference between Int-Partial and Int-Total
+- Mesic
+    -Mesic-Total > Mesic-Open
+    - No difference between Mesic-Open and Mesic-Partial
+    - No difference between Mesic-Partial and Mesic-Total
+- Open:
+  - Int Open > Mesic-Open
+  - No difference between Arid and Mesic
+- Partial:
+    - Int-Partial > Mesic-Partial
+    - No difference between Arid and Mesic
+- Total:
+    - Int-Total > Mesic-Total
+    - No difference between Arid and Mesic
 
 ```{r}
 seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian)
@@ -253,33 +276,27 @@ emmeans(log_seed_mass, pairwise ~ climate + treatment)
 
 ```
 
-Seed mass CWM:
-
-- same trend observed across climates
-- same trend observed across herbivore treatments
--Arid
-    - Arid-Total > Arid-Open
-    - No difference between Arid-Open and Arid-Partial
-    - No difference between Arid-Partial and Arid-Total
-- Int
-    -Int-Total > Int-Open
-    - No difference between Int-Open and Int-Partial
-    - No difference between Int-Partial and Int-Total
-- Mesic
-    -Mesic-Total > Mesic-Open
-    - No difference between Mesic-Open and Mesic-Partial
-    - No difference between Mesic-Partial and Mesic-Total
-- Open:
-  - Int Open > Mesic-Open
-  - No difference between Arid and Mesic
-- Partial:
-    - Int-Partial > Mesic-Partial
-    - No difference between Arid and Mesic
-- Total:
-    - Int-Total > Mesic-Total
-    - No difference between Arid and Mesic
-
 #### e. Leaf-N CWM
+
+- No difference between any of the different herbivore treatments within climates
+- Same pattern observed between treatments at different climates
+
+- Arid:
+    - No difference between treatments at Arid
+- Int:
+     - No difference between  treatments at Int
+- Mesic:
+    - No difference between treatments at Mesic
+- Open:
+    - Arid-Open > Mesic-Open
+    - Int-Open > Mesic-Open
+- Partial:
+    - Arid-Partial > Mesic-Partial
+    - Int-Partial > Mesic-Partial
+- Total:
+    - Arid-Total > Mesic-Total
+    - Int-Total > Mesic-Total
+
 ```{r} 
 leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
 dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
@@ -306,28 +323,10 @@ LNC_sig_pairs
 
 emmeans(log_n_CWM, pairwise ~ climate + treatment)
 ```
-LNC CWM:
-
-- No difference between any of the different herbivore treatments within climates
-- Same pattern observed between treatments at different climates
-
-- Arid:
-    - No difference between treatments at Arid
-- Int:
-     - No difference between  treatments at Int
-- Mesic:
-    - No difference between treatments at Mesic
-- Open:
-    - Arid-Open > Mesic-Open
-    - Int-Open > Mesic-Open
-- Partial:
-    - Arid-Partial > Mesic-Partial
-    - Int-Partial > Mesic-Partial
-- Total:
-    - Arid-Total > Mesic-Total
-    - Int-Total > Mesic-Total
 
 ### Functional Groups
+
+- I started setting this up to look at changes in weighted means when grouped by funcitonal group, but I think it would be more interesting to use the species-level, unweighted data.
 
 ```{r}
 cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
@@ -353,8 +352,6 @@ shrub <- cwm_functional %>%
 ```
 
 #### a. grasses
-
--need to come back to
 
 ```{r}
 
