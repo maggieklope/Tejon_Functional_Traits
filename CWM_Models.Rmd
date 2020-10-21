@@ -46,7 +46,6 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 `lm(LA ~ Climate * Treatment, family = gaussian)`
 
 ```{r}
-
 cwm_traits_adj %>%
   pivot_longer(cols = weighted_la:weighted_n,
                names_to = "traits",
@@ -99,11 +98,12 @@ cwm_traits_adj <- cwm_traits_adj %>%
   mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
   mutate(log_n = log(weighted_n))
 
-
 ```
 
 #### a. Leaf Area CWM
 
+- Averaged over treatment, climate is different between Arid-Int and Arid-Mesic
+- Averaged over climate, treatment is different between Open-Total and Partial-Total, but not Open-Partial
 - Arid Total LA CWM larger than all other plots
 - Arid:
     - Arid Total > Arid Open and Arid Partial
@@ -121,23 +121,24 @@ cwm_traits_adj <- cwm_traits_adj %>%
 ```{r}
 # Best fit model:
 LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
 dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
 
 # Checking data
-(simulateResiduals(LA_CWM, plot= T)) #What is the red asterisk on the model predictions graph?
-(shapiro.test(residuals(LA_CWM))) #normal
+simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
+shapiro.test(residuals(LA_CWM)) #normal
 
-# Model summaries
-LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
-
-emmeans(LA_CWM, pairwise ~ climate * treatment)
+# pairwise comparisons
+emmeans(LA_CWM, pairwise ~ climate)
+emmeans(LA_CWM, pairwise ~ treatment)
+# emmeans(LA_CWM, pairwise ~ climate * treatment)
+emmeans(LA_CWM, pairwise ~ climate | treatment)
+emmeans(LA_CWM, pairwise ~ cliamte | treatment)
 
 ```
 
 #### b. SLA CWM
-
+- Averaging for treatment, climate significanlty different between Arid-Int and Arid-Mesic
+- Averaging for climate, treatment significantly different between Open-Total and Partial-Total, but not Open-Partial
 - Once again, Arid Total larger than almost all other treatments
 - Arid trends:
     - Arid Total larger than Arid Open and Arid Partial
@@ -155,18 +156,20 @@ emmeans(LA_CWM, pairwise ~ climate * treatment)
 ```{r}
 # Best fit model:
 LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-LA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian)
-dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
+dredge(LA_CWM)# best model: weighted_la ~ climate * treatment
 
 # Checking data
-(simulateResiduals(LA_CWM, plot= T)) #What is the red asterisk on the model predictions graph?
-(shapiro.test(residuals(LA_CWM))) #normal
+simulateResiduals(LA_CWM, plot= T) # looks good
+shapiro.test(residuals(LA_CWM)) # normal
 
-# Model summaries
-LA_sig_pairs <-  as.data.frame(pairs(emmeans(LA_CWM, ~climate * treatment))) %>% 
-  filter(p.value <= 0.05)
+# pairwise comparisons
+emmeans(LA_CWM, pairwise ~ climate)
+emmeans(LA_CWM, pairwise ~ treatment)
+# emmeans(LA_CWM, pairwise ~ climate * treatment)
+LA_pairs_1 <- emmeans(LA_CWM, pairwise ~ climate | treatment)
+LA_pairs_2 <- emmeans(LA_CWM, pairwise ~ treatment | climate)
 
-emmeans(LA_CWM, pairwise ~ climate * treatment)
+as.data.frame(LA_pairs_1$contrasts)
 
 ```
 
@@ -199,12 +202,11 @@ shapiro.test(residuals(SLA_CWM)) #normal
 SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>% 
   filter(p.value <= 0.05)
 
+emmeans(SLA_CWM, pairwise ~ climate)
+emmeans(SLA_CWM, pairwise ~ treatment)
 # emmeans(SLA_CWM, pairwise ~ climate * treatment)
 emmeans(SLA_CWM, pairwise ~ climate | treatment)
 
-# plot(pairs(emmeans(SLA_CWM, ~climate * treatment))) +
-#   theme_bw(base_size = 18) +
-#   geom_vline(xintercept=0, size=2, color="red")
 
 ```
 
@@ -259,17 +261,13 @@ emmeans(LDMC_CWM, pairwise ~ climate | treatment)
 simulateResiduals(LDMC_CWM, plot= T) #looks good
 shapiro.test(residuals(LDMC_CWM)) #normal
 
-summary(LDMC_CWM)
-
 LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) %>% 
   filter(p.value <= 0.05)
-LDMC_sig_pairs
 
 emmeans(LDMC_CWM, pairwise ~ climate)
-
 emmeans(LDMC_CWM, pairwise ~ treatment)
-
-emmeans(LDMC_CWM, pairwise ~ climate + treatment)
+# emmeans(LDMC_CWM, pairwise ~ climate + treatment)
+emmeans(LDMC_CWM, pairwise ~ climate | treatment)
 
 
 ```
@@ -317,13 +315,15 @@ log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatm
 simulateResiduals(log_seed_mass, plot= T) #looks ok
 shapiro.test(residuals(log_seed_mass)) #normal
 
-summary(log_seed_mass)
 
+#pairwise comparisons
 seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatment))) %>% 
   filter(p.value <= 0.05)
-seed_sig_pairs
 
-emmeans(log_seed_mass, pairwise ~ climate + treatment)
+emmeans(log_seed_mass, pairwise ~ climate)
+emmeans(log_seed_mass, pairwise ~ treatment)
+# emmeans(log_seed_mass, pairwise ~ climate + treatment)
+emmeans(log_seed_mass, pairwise ~ climate | treatment)
 
 ```
 

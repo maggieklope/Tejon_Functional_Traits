@@ -247,7 +247,8 @@ FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>%
 # all pairwise comparisons
 emmeans(FRic, pairwise ~ climate)
 emmeans(FRic, pairwise ~ treatment)
-emmeans(FRic, pairwise ~ climate * treatment)
+# emmeans(FRic, pairwise ~ climate * treatment)
+emmeans(FRic, pairwise ~ climate | treatment)
 
 ```
 
@@ -322,7 +323,8 @@ FDiv_sig_pairs <-  as.data.frame(pairs(emmeans(FDiv, ~ climate * treatment)))%>%
 # all pairwise comparisons
 emmeans(FDiv, pairwise ~ climate)
 emmeans(FDiv, pairwise ~ treatment)
-emmeans(FDiv, pairwise ~ climate * treatment)
+# emmeans(FDiv, pairwise ~ climate * treatment)
+emmeans(FDiv, pairwise ~ climate | treatment)
 ```
 
 #### FDis
@@ -369,7 +371,8 @@ FDis_sig_pairs <-  as.data.frame(pairs(emmeans(FDis, ~ climate * treatment)))%>%
 # all pairwise comparisons
 emmeans(FDis, pairwise ~ climate)
 emmeans(FDis, pairwise ~ treatment)
-emmeans(FDis, pairwise ~ climate * treatment)
+# emmeans(FDis, pairwise ~ climate * treatment)
+emmeans(FDis, pairwise ~ climate | treatment)
 
 ```
 
