@@ -10,9 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(ggplot2)
+library(ggridges)
 library(stats)
 library(sjPlot)
 library(FD)
+library(car)
 library(DHARMa) #model diagnostics
 library(glmmTMB) #model fitting
 library(MuMIn) #model summaries and comparisons
@@ -31,7 +33,7 @@ abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate" #changing name
 traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>% 
   rename(old_names = Species) %>% #changing column names
   rename(Species = sci_name) %>% #changing column names
-  select(Climate, Treatment, Block, Species, LA) %>% 
+  dplyr::select(Climate, Treatment, Block, Species, Species_2, LA, functional_group) %>% 
   mutate(LA = as.numeric(LA)) %>% #making sure value is numeric
   mutate(Species = ifelse(Species == "Trifolium microcephalum", #fixing a typo that makes factors weird
                           "trifolium microcephalum",
@@ -55,7 +57,7 @@ abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate"#changing name 
 
 # reading in 2017 functional trait datasheet
 md <- read_csv("Datasheets/MasterDataSheet(10_18_2020).csv") %>% 
-  select(climate, treatment, species_name, individual, wet_weight_g, wet_weight_mg, dry_weight_g, dry_weight_mg, Area_Leaf_total_mm2, Average_Leaf_Area) %>% 
+  dplyr::select(climate, treatment, species_name, individual, wet_weight_g, wet_weight_mg, dry_weight_g, dry_weight_mg, Area_Leaf_total_mm2, Average_Leaf_Area) %>% 
   mutate(wet_weight_mg = as.numeric(wet_weight_mg)) %>% 
   mutate(wet_weight_g = as.numeric(wet_weight_g)) %>% 
   mutate(dry_weight_g = as.numeric(dry_weight_g)) %>% 
@@ -88,7 +90,7 @@ traits_2017$species_name[traits_2017$species_name == "Plagiobothrys nothofulvus"
 cwm_traits <- abund_2019 %>% 
   group_by(climate, treatment) %>% 
   left_join(traits_2017, by = c("climate", "treatment", "species_name")) %>% 
-  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, Notes)
+  dplyr::select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, Notes)
 
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
 
@@ -102,7 +104,7 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
   mutate(weighted_n = leaf_n * Abundance) %>%
   group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-  select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+  dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
 
 ```
@@ -147,6 +149,7 @@ model_test("Bromus diandrus") #best model includes only intercept, but including
 
 bro_dia <- traits_19[traits_19$Species == "Bromus diandrus",]
 glm_bro_dia <- glmmTMB(data = bro_dia, LA ~ Climate, family = gaussian)
+
 
 simulateResiduals(glm_bro_dia, plot= T) # qq plot doesn't look that great
 shapiro.test(residuals(glm_bro_dia)) # but residuals are normal (barely)
@@ -295,7 +298,235 @@ glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",]
 
 ```{r}
 
+ggplot(funct_LA, aes(x = LA, y = functional_group))+
+  geom_density_ridges()
 
+funct_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species))
+
+ggplot(funct_LA, aes(x = LA)) +
+  geom_histogram() +
+  theme_bw()
+
+grass_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species)) %>% 
+  dplyr::filter(functional_group == "grass") %>% 
+  mutate(sqrt_LA = sqrt(LA))
+
+shrub_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species)) %>% 
+  dplyr::filter(functional_group == "shrub") %>% 
+  mutate(sqrt_LA = sqrt(LA)) %>% 
+  mutate(inv_LA = 1 / LA)
+
+forb_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species)) %>% 
+  dplyr::filter(functional_group == "forb") %>% 
+  mutate(sqrt_LA = sqrt(LA)) %>% 
+  mutate(inv_LA = 1 / LA)
+
+shapiro.test(forb_LA$log_LA) #normal
+shapiro.test(shrub_LA$log_LA) #not normal
+shapiro.test(grass_LA$log_LA) #not normal
+shapiro.test(shrub_LA$sqrt_LA) #not normal
+shapiro.test(grass_LA$sqrt_LA) #normal
+shapiro.test(shrub_LA$inv_LA) #not normal
+
+# just impact of functional group
+funct_glm <- glm(data = funct_LA, LA ~ functional_group, family = Gamma, na.action = na.fail)
+dredge(funct_glm)
+
+simulateResiduals(funct_glm, plot= T) # not normal
+shapiro.test(residuals(funct_glm)) # not normal
+
+emmeans(funct_glm, pairwise ~ functional_group)
+
+# with climate, treatment, and functional group
+funct_glm <- glm(data = funct_LA, LA ~ Climate * Treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_glm)
+funct_glm <- glm(data = funct_LA, LA ~ Climate + functional_group, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_glm, plot= T) # not normal
+shapiro.test(residuals(funct_glm)) # not normal
+
+# log transform
+funct_glm <- glm(data = funct_LA, log_LA ~ Climate * Treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_glm)
+funct_glm <- glm(data = funct_LA, log_LA ~ Climate + functional_group, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_glm, plot= T) # not normal
+shapiro.test(residuals(funct_glm)) # not normal
+
+# gamma distribution
+funct_glm <- glm(data = funct_LA, LA ~ Climate + Treatment + functional_group, family = Gamma, na.action = na.fail)
+dredge(funct_glm)
+funct_glm <- glm(data = funct_LA, LA ~ Climate + functional_group, family = Gamma, na.action = na.fail)
+
+simulateResiduals(funct_glm, plot= T) # not normal
+shapiro.test(residuals(funct_glm)) # not normal
+
+# gamma with log link
+funct_glm <- glm(data = funct_LA, LA ~ Climate + Treatment + functional_group, family = Gamma(link = log), na.action = na.fail)
+dredge(funct_glm)
+funct_glm <- glm(data = funct_LA, LA ~ Climate + functional_group, family = Gamma(link = log), na.action = na.fail)
+
+simulateResiduals(funct_glm, plot= T) # not normal
+shapiro.test(residuals(funct_glm)) # not normal
+
+#random effect with gaussian
+funct_glm <- glm(data = funct_LA, LA ~ Climate + Treatment + functional_group + (1|fact_Species), family = "gaussian")
+funct_glm  <- glm(data = funct_LA, LA ~ Climate + (1|fact_Species), family = gaussian)
+
+test <- as.factor(funct_LA$Species)
+class(test)
+
+```
+
+
+```{r}
+
+
+
+grass_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species)) %>% 
+  dplyr::filter(functional_group == "grass") %>% 
+  mutate(sqrt_LA = sqrt(LA))
+
+grass_LA
+
+grass_glm <- glm(data = grass_LA, LA ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, LA ~ 1, family = "gaussian", na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # not normal
+
+grass_glm <- glm(data = grass_LA, log_LA ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, log_LA ~ 1, family = "gaussian", na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # not normal
+
+ggplot(grass_LA, aes(x = LA)) +
+  geom_histogram() +
+  theme_bw()
+
+grass_glm <- glm(data = grass_LA, LA ~ Climate + Treatment, family = Gamma, na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, LA ~ 1, family = Gamma, na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # not normal
+
+grass_glm <- glm(data = grass_LA, log_LA ~ Climate + Treatment, family = Gamma, na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, log_LA ~ 1, family = Gamma, na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # not normal
+
+grass_glm <- glm(data = grass_LA, LA ~ Climate + Treatment, family = Gamma(link = log), na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, LA ~ 1, family = Gamma(link=log), na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # not normal
+
+grass_glm <- glm(data = grass_LA, sqrt_LA ~ Climate + Treatment, family = gaussian, na.action = na.fail)
+dredge(grass_glm)
+grass_glm <- glm(data = grass_LA, sqrt_LA ~ 1, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_glm, plot= T) # not normal
+shapiro.test(residuals(grass_glm)) # normal
+
+
+```
+
+
+```{r}
+shrub_LA <- traits_19 %>% 
+  drop_na(LA) %>% 
+  mutate(log_LA = log(LA)) %>% 
+  mutate(fact_Species = as.factor(Species)) %>% 
+  dplyr::filter(functional_group == "shrub") %>% 
+  mutate(sqrt_LA = sqrt(LA)) %>% 
+  mutate(inv_LA = 1 / LA)
+
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
+boxCox(shrub_glm)
+
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate, family = "gaussian", na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # not normal
+
+shrub_glm <- glm(data = shrub_LA, log_LA ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, log_LA ~ Climate, family = "gaussian", na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # not normal
+
+ggplot(shrub_LA, aes(x = LA)) +
+  geom_histogram(bins = 100) +
+  theme_bw()
+
+ggplot(shrub_LA, aes(x = log_LA)) +
+  geom_histogram(bins=100) +
+  theme_bw()
+
+ggplot(shrub_LA, aes(x = inv_LA)) +
+  geom_histogram(bins=100) +
+  theme_bw()
+
+
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate + Treatment, family = Gamma, na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate, family = Gamma, na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # not normal
+
+shrub_glm <- glm(data = shrub_LA, log_LA ~ Climate + Treatment, family = Gamma, na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, log_LA ~ Climate, family = Gamma, na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # not normal
+
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate + Treatment, family = Gamma(link = log), na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, LA ~ Climate, family = Gamma(link=log), na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # not normal
+
+shrub_glm <- glm(data = shrub_LA, sqrt_LA ~ Climate + Treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, sqrt_LA ~ Climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # normal
+
+shrub_glm <- glm(data = shrub_LA, inv_LA ~ Climate + Treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_glm)
+shrub_glm <- glm(data = shrub_LA, inv_LA ~ Climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_glm, plot= T) # not normal
+shapiro.test(residuals(shrub_glm)) # normal
 
 ```
 
@@ -304,7 +535,7 @@ glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",]
 # # TRY Database search to fill in missing species
 # TRY_DB_1 <- read_csv("Datasheets/TRY_DB_june_2020.csv") %>% 
 #   filter(ValueKindName %in% c("Single", "Mean", "Best estimate")) %>%
-#   select(AccSpeciesName, TraitName, StdValue) %>% 
+#   dplyr::select(AccSpeciesName, TraitName, StdValue) %>% 
 #   dplyr::group_by(AccSpeciesName, TraitName) %>% 
 #   mutate(StdValue = as.numeric(StdValue)) %>% 
 #   summarize(mean = mean(StdValue)) %>% 
@@ -312,7 +543,7 @@ glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",]
 # 
 # TRY_DB_2 <- read_csv("Datasheets/TRY_DB_Oct-18-20.csv") %>% 
 #   filter(ValueKindName %in% c("Single", "Mean", "Best estimate")) %>%
-#   select(AccSpeciesName, TraitName, StdValue) %>% 
+#   dplyr::select(AccSpeciesName, TraitName, StdValue) %>% 
 #   dplyr::group_by(AccSpeciesName, TraitName) %>% 
 #   mutate(StdValue = as.numeric(StdValue)) %>% 
 #   summarize(mean = mean(StdValue)) %>% 
