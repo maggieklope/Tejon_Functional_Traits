@@ -134,6 +134,15 @@ emmeans(LA_CWM, pairwise ~ treatment)
 emmeans(LA_CWM, pairwise ~ climate | treatment)
 emmeans(LA_CWM, pairwise ~ cliamte | treatment)
 
+
+install.packages("lsmeans")
+library(lsmeans)
+
+?lsmeans()
+
+grid <- ref.grid(LA_CWM)
+plot(lsmeans(LA_CWM, ~ climate + treatment))
+
 ```
 
 #### b. SLA CWM
@@ -165,9 +174,11 @@ shapiro.test(residuals(LA_CWM)) # normal
 # pairwise comparisons
 emmeans(LA_CWM, pairwise ~ climate)
 emmeans(LA_CWM, pairwise ~ treatment)
-# emmeans(LA_CWM, pairwise ~ climate * treatment)
+emmeans(LA_CWM, pairwise ~ climate * treatment)
 LA_pairs_1 <- emmeans(LA_CWM, pairwise ~ climate | treatment)
 LA_pairs_2 <- emmeans(LA_CWM, pairwise ~ treatment | climate)
+
+plot(emmeans(LA_CWM, pairwise ~ climate * treatment))
 
 as.data.frame(LA_pairs_1$contrasts)
 
