@@ -205,6 +205,8 @@ FD_all %>%
   theme_bw() +
   facet_wrap(~FD, scales = "free")
 
+# ggsave("Functional_Diversity_Barchart.png")
+
 ```
 
 ### Models
@@ -287,7 +289,7 @@ emmeans(FEve, pairwise ~ treatment) #no significance between treatments
 
 #### FDiv
 
-- averaged over climate levels, there is a sig difference between all climate treatments
+- averaged over climate levels, there is a sig difference between all herbivoretreatments
 - averaged over herbivore treatment, there is a sig difference between Arid-Mesic and Int-Mesic
 - Arid
     - Arid Open > Arid Partial
