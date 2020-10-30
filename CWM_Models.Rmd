@@ -279,6 +279,8 @@ emmeans(LDMC_CWM, pairwise ~ climate)
 emmeans(LDMC_CWM, pairwise ~ treatment)
 # emmeans(LDMC_CWM, pairwise ~ climate + treatment)
 emmeans(LDMC_CWM, pairwise ~ climate | treatment)
+emmeans(LDMC_CWM, pairwise ~ treatment | climate)
+
 
 
 ```
@@ -449,6 +451,15 @@ cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
   select(climate, treatment, functional_group, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
+cwm_functional %>%
+  pivot_longer(cols = weighted_la:weighted_n,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_grid(traits ~ functional_group, scales = "free")
+
 grass <- cwm_functional %>% 
   filter(functional_group == "grass")
 
@@ -458,6 +469,78 @@ forb <- cwm_functional %>%
 shrub <- cwm_functional %>% 
   filter(functional_group == "shrub")
   
+```
+
+#### CWMs with interaction between climate, treatment, and functional group
+
+```{r}
+#leaf area is very skewed:
+ggplot(cwm_functional, aes(x = weighted_la)) +
+  geom_histogram() +
+  theme_bw()+
+  facet_wrap(~functional_group)
+
+#trying glm
+funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+
+simulateResiduals(funct_la, plot= T) #does not pass dispersion test
+shapiro.test(residuals(funct_la)) #but residuals are normal
+
+testDispersion(simulateResiduals(funct_la, plot= T)) # does not pass
+
+#trying log transformation with gaussian
+cwm_functional <- cwm_functional %>% 
+  mutate(log_la = log(weighted_la))
+
+ggplot(cwm_functional, aes(x = log_la)) +
+  geom_histogram() +
+  theme_bw()+
+  facet_wrap(~functional_group)
+
+funct_la <- glm(data = cwm_functional, log_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glm(data = cwm_functional, log_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_la, plot= T) #looks good
+shapiro.test(residuals(funct_la)) # but residuals are not normal
+
+# trying Gamma with log link on un-transformed
+funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = Gamma(link = "log"), na.action = na.fail)
+dredge(funct_la)
+funct_la <- glm(data = cwm_functional, weighted_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = Gamma(link = "log"), na.action = na.fail)
+
+simulateResiduals(funct_la, plot= T) #does not pass dispersion test, but is very close!
+shapiro.test(residuals(funct_la)) #but residuals are normal
+
+#trying log+1 with gaussian
+cwm_functional <- cwm_functional %>% 
+  mutate(log_plus_la = log(weighted_la + 1))
+
+ggplot(cwm_functional, aes(x = log_plus_la)) +
+  geom_histogram() +
+  theme_bw()
+
+funct_la <- glm(data = cwm_functional, log_plus_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glm(data = cwm_functional, log_plus_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_la, plot= T) #good
+shapiro.test(residuals(funct_la)) #residuals are normal
+
+emmeans(funct_la, pairwise ~ climate | functional_group)
+emmeans(funct_la, pairwise ~ treatment | functional_group)
+LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>% 
+  separate(contrast, c("A", "B"), sep = " - ") %>% 
+  separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>% 
+  separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>% 
+  filter((A_climate == B_climate & A_functional_group == B_functional_group) | 
+          (A_climate == B_climate & A_treatment == B_treatment) | 
+           (A_treatment == B_treatment & A_functional_group == B_functional_group))
+  
+  
+LA_funct_sig_pairs
+
 ```
 
 #### a. grasses
