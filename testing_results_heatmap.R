@@ -1,9 +1,15 @@
 library(tidyverse)
 library(emmeans)
+library(ggpubr)
 
+?ggcorrplot()
+
+###FRic###
 test <- as.data.frame(pairs(emmeans(FRic, ~ climate * treatment))) %>% 
   separate(contrast, c("A", "B"), sep = " - ") %>% 
-  select(A, B, estimate, p.value)
+  select(A, B, estimate, p.value) %>% 
+  mutate(A = str_replace_all(A, "," , "-")) %>% 
+  mutate(B = str_replace_all(B, "," , "-"))
 
 test2 <- test %>%
   rename(temp = "A") %>%
@@ -14,10 +20,17 @@ test <- rbind(test, test2) %>%
   select(A, B, estimate, p.value)
 
 diff <- as.matrix(test %>%
-  select(A, B, estimate) %>% 
-  pivot_wider(names_from = B, values_from = estimate) %>% 
-  replace(is.na(.), 0) %>% 
-  column_to_rownames("A"))
+                    select(A, B, estimate) %>% 
+                    pivot_wider(names_from = B, values_from = estimate) %>% 
+                    replace(is.na(.), 0) %>% 
+                    column_to_rownames("A") %>% 
+                    dplyr::select("Arid-Open", "Intermediate-Open":"Mesic-Total")
+    )
+
+max(diff)
+max = 5.4
+min(diff)
+min = -5.6
 
 p_val <- as.matrix(test %>%
   select(A, B, p.value) %>% 
@@ -26,15 +39,174 @@ p_val <- as.matrix(test %>%
     column_to_rownames("A"))
 
 ggcorrplot(diff) + 
-  scale_fill_gradient2(limits=c(-6, 6))
+  scale_fill_gradient2(limits=c(min, max))
 
-ggcorrplot(diff, hc.order = TRUE, type = "lower",
+FRic_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE,
            outline.col = "white",
            p.mat = p_val,
            ggtheme = ggplot2::theme_gray,
            colors = c("#6D9EC1", "white", "#E46726"),
            insig = "blank")+
-  scale_fill_gradient2(limits=c(-6, 6))
+  scale_fill_gradient2(limits=c(min, max))+
+  ggtitle("FRic")
+
+FRic_plot
+
+###FDis###
+test <- as.data.frame(pairs(emmeans(FDis, ~ climate * treatment))) %>% 
+  separate(contrast, c("A", "B"), sep = " - ") %>% 
+  select(A, B, estimate, p.value) %>% 
+  mutate(A = str_replace_all(A, "," , "-")) %>% 
+  mutate(B = str_replace_all(B, "," , "-"))
+
+test2 <- test %>%
+  rename(temp = "A") %>%
+  rename(A = "B") %>%
+  rename(B = "temp")
+
+test <- rbind(test, test2) %>%
+  select(A, B, estimate, p.value)
+
+diff <- as.matrix(test %>%
+                    select(A, B, estimate) %>% 
+                    pivot_wider(names_from = B, values_from = estimate) %>% 
+                    replace(is.na(.), 0) %>% 
+                    column_to_rownames("A") %>% 
+                    dplyr::select("Arid-Open", "Intermediate-Open":"Mesic-Total")
+)
+
+max(diff)
+max = .81
+min(diff)
+min = -1.01
+
+p_val <- as.matrix(test %>%
+                     select(A, B, p.value) %>% 
+                     pivot_wider(names_from = B, values_from = p.value) %>% 
+                     replace(is.na(.), 0) %>% 
+                     column_to_rownames("A"))
+
+ggcorrplot(diff) + 
+  scale_fill_gradient2(limits=c(min, max))
+
+FDis_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE,
+                        outline.col = "white",
+                        p.mat = p_val,
+                        ggtheme = ggplot2::theme_gray,
+                        colors = c("#6D9EC1", "white", "#E46726"),
+                        insig = "blank")+
+  scale_fill_gradient2(limits=c(min, max))+
+  ggtitle("FDis")
+FDis_plot
+
+
+###FDiv###
+test <- as.data.frame(pairs(emmeans(FDiv, ~ climate * treatment))) %>% 
+  separate(contrast, c("A", "B"), sep = " - ") %>% 
+  select(A, B, estimate, p.value) %>% 
+  mutate(A = str_replace_all(A, "," , "-")) %>% 
+  mutate(B = str_replace_all(B, "," , "-"))
+
+test2 <- test %>%
+  rename(temp = "A") %>%
+  rename(A = "B") %>%
+  rename(B = "temp")
+
+test <- rbind(test, test2) %>%
+  select(A, B, estimate, p.value)
+
+diff <- as.matrix(test %>%
+                    select(A, B, estimate) %>% 
+                    pivot_wider(names_from = B, values_from = estimate) %>% 
+                    replace(is.na(.), 0) %>% 
+                    column_to_rownames("A") %>% 
+                    dplyr::select("Arid-Open", "Intermediate-Open":"Mesic-Total")
+)
+
+
+replace(is.na(.), 0) %>% 
+  column_to_rownames("A") %>% 
+
+max(diff)
+max = 0.3
+min(diff)
+min = -0.5
+
+p_val <- as.matrix(test %>%
+                     select(A, B, p.value) %>% 
+                     pivot_wider(names_from = B, values_from = p.value) %>% 
+                     replace(is.na(.), 0) %>% 
+                     column_to_rownames("A"))
+
+
+ggcorrplot(diff) + 
+  scale_fill_gradient2(limits=c(min, max))
+
+FDiv_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE,
+                        outline.col = "white",
+                        p.mat = p_val,
+                        ggtheme = ggplot2::theme_gray,
+                        colors = c("#6D9EC1", "white", "#E46726"),
+                        insig = "blank")+
+  scale_fill_gradient2(limits=c(min, max))+
+  ggtitle("FDiv")
+FDiv_plot
+
+?ggarrange()
+ggarrange(FRic_plot, FDis_plot, FDiv_plot, nrow = 3, ncol = 1, widths = 1, label.x = FDiv_plot, labels = "AUTO")
+
+###Writing function to make heatmaps###
+# heat_map <- function(model) {
+#   test <- as.data.frame(pairs(emmeans(model, ~ climate * treatment))) %>% 
+#     separate(contrast, c("A", "B"), sep = " - ") %>% 
+#     select(A, B, estimate, p.value)
+#   
+#   test2 <- test %>%
+#     rename(temp = "A") %>%
+#     rename(A = "B") %>%
+#     rename(B = "temp")
+#   
+#   test <- rbind(test, test2) %>%
+#     select(A, B, estimate, p.value)
+#   
+#   diff <- as.matrix(test %>%
+#                       select(A, B, estimate) %>% 
+#                       pivot_wider(names_from = B, values_from = estimate) %>% 
+#                       replace(is.na(.), 0) %>% 
+#                       column_to_rownames("A"))
+#   
+#   max = max(diff)
+#   min = min(diff)
+#   
+#   p_val <- as.matrix(test %>%
+#                        select(A, B, p.value) %>% 
+#                        pivot_wider(names_from = B, values_from = p.value) %>% 
+#                        replace(is.na(.), 0) %>% 
+#                        column_to_rownames("A"))
+#   
+#   ggcorrplot(diff) + 
+#     scale_fill_gradient2(limits=c(min, max))
+  
+  # ggcorrplot(diff, hc.order = TRUE, type = "lower",
+  #            outline.col = "white",
+  #            p.mat = p_val,
+  #            ggtheme = ggplot2::theme_gray,
+  #            colors = c("#6D9EC1", "white", "#E46726"),
+  #            insig = "blank")+
+  #   scale_fill_gradient2(limits=c(min, max))
+# }
+
+heat_map(FDis)
+heat_map(FRic)
+heat_map(FDiv)
+
+
+
+
+
+
+
+
 
 
 
