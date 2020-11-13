@@ -1,0 +1,97 @@
+---
+title: "Response-Ratio-Models"
+author: "Maggie Klope"
+date: "11/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(ggridges)
+library(stats)
+library(sjPlot)
+library(FD)
+library(car)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
+# library(performance) #for R2 values
+
+r_ratio <- traits_19 %>% 
+  dplyr::filter(Treatment %in%  c("Total", "Open")) %>%
+  group_by(Climate, Treatment, Species, functional_group, Block) %>% 
+  na.omit() %>% 
+  summarise(LA = mean(LA)) %>% 
+  pivot_wider(names_from = Treatment, values_from = LA) %>% 
+  mutate(LA_diff = Open - Total) %>% 
+  na.omit()
+
+?summarise()
+
+ggplot(r_ratio, aes(x = LA_diff)) +
+  geom_histogram() +
+  theme_bw()
+
+shapiro.test(r_ratio$LA_diff) # normal distribution
+
+```
+
+
+# using 2019 data difference
+
+```{r}
+
+diff_glm <- glmmTMB(data = r_ratio, LA_diff ~ Climate * functional_group + (1|Species)) # convergence
+
+diff_glm <- glmmTMB(data = r_ratio, LA_diff ~ Climate + functional_group + (1|Species))
+dredge(diff_glm)
+diff_glm <- glmmTMB(data = r_ratio, LA_diff ~ 1)
+
+simulateResiduals(diff_glm, plot= T) # looks eh
+shapiro.test(residuals(diff_glm)) # normal
+
+```
+
+# splitting by functional group
+
+```{r}
+
+# grass
+grass <- r_ratio %>% 
+  filter(functional_group == "grass")
+
+diff_grass <- glmmTMB(data = grass, LA_diff ~ Climate + (1|Species)) 
+dredge(diff_grass)
+diff_grass <- glmmTMB(data = grass, LA_diff ~ 1 + (1|Species)) 
+
+simulateResiduals(diff_grass, plot= T) # looks a little off
+shapiro.test(residuals(diff_grass)) # but residuals are normal
+
+# forb
+forb <- r_ratio %>% 
+  filter(functional_group == "forb")
+
+diff_forb <- glmmTMB(data = forb, LA_diff ~ Climate + (1|Species)) 
+dredge(diff_forb)
+diff_forb <- glmmTMB(data = forb, LA_diff ~ 1 + (1|Species)) 
+
+simulateResiduals(diff_forb, plot= T) # looks a little off
+shapiro.test(residuals(diff_forb)) # but residuals are normal
+
+# shrub (not enough data)
+shrub <- r_ratio %>% 
+  filter(functional_group == "shrub")
+
+diff_shrub <- glmmTMB(data = shrub, LA_diff ~ Climate + (1|Species)) 
+dredge(diff_shrub)
+diff_shrub <- glmmTMB(data = shrub, LA_diff ~ 1 + (1|Species)) 
+
+simulateResiduals(diff_shrub, plot= T) # looks a little off
+shapiro.test(residuals(diff_shrub)) # but residuals are normal
+
+```
+
