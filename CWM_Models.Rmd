@@ -54,6 +54,9 @@ cwm_traits_adj %>%
   geom_boxplot() +
   theme_bw() +
   facet_wrap(~traits, scales = "free")
+
+# ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 5, height = 10)
+
 ```
 
 ```{r, include=FALSE}
@@ -132,7 +135,7 @@ emmeans(LA_CWM, pairwise ~ climate)
 emmeans(LA_CWM, pairwise ~ treatment)
 # emmeans(LA_CWM, pairwise ~ climate * treatment)
 emmeans(LA_CWM, pairwise ~ climate | treatment)
-emmeans(LA_CWM, pairwise ~ cliamte | treatment)
+emmeans(LA_CWM, pairwise ~ treatment | climate)
 
 
 install.packages("lsmeans")
@@ -437,7 +440,7 @@ emmeans(log_n_CWM, pairwise ~ climate | treatment)
 
 ### Functional Groups
 
-- I started setting this up to look at changes in weighted means when grouped by funcitonal group, but I think it would be more interesting to use the species-level, unweighted data.
+- I started setting this up to look at changes in weighted means when grouped by funcitonal group, but I think it would be more interesting to use the species-level, un-weighted data.
 
 ```{r}
 cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
