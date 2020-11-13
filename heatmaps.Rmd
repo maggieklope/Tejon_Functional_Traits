@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(emmeans)
 library(ggpubr)
+library(ggcorrplot)
+
 ```
 
 ## FRic
@@ -59,7 +61,8 @@ FRic_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE
            colors = c("#6D9EC1", "white", "#E46726"),
            insig = "blank")+
   scale_fill_gradient2(limits=c(min, max))+
-  ggtitle("FRic")
+  ggtitle("FRic")+
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 FRic_plot
 ```
@@ -110,7 +113,9 @@ FDis_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE
                         colors = c("#6D9EC1", "white", "#E46726"),
                         insig = "blank")+
   scale_fill_gradient2(limits=c(min, max))+
-  ggtitle("FDis")
+  ggtitle("FDis")+
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
 FDis_plot
 
 ```
@@ -162,17 +167,17 @@ FDiv_plot <- ggcorrplot(diff, hc.order = FALSE, type = "lower", show.diag = TRUE
                         colors = c("#6D9EC1", "white", "#E46726"),
                         insig = "blank")+
   scale_fill_gradient2(limits=c(min, max))+
-  ggtitle("FDiv")
+  ggtitle("FDiv")+
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 FDiv_plot
 ```
 
 ## arrange
 ```{r}
 
-?ggarrange()
-ggarrange(FRic_plot, FDis_plot, FDiv_plot, nrow = 3, ncol = 1, widths = 1)
+# ggarrange(FRic_plot, FDis_plot, FDiv_plot, nrow = 3, ncol = 1, widths = 1)
 
-library(cowplot)
+# library(cowplot)
 
 cowplot::plot_grid( 
                    FDis_plot + theme(axis.text.x = element_blank(),
@@ -183,6 +188,10 @@ cowplot::plot_grid(
                                     axis.title.x = element_blank() ),
                    FRic_plot,
                    ncol = 1,
+                   rel_heights = -1,
                    align = "h")
+
+ggsave("FD_results_heatmap.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 5, height = 10)
+
 ```
 
