@@ -210,7 +210,11 @@ emmeans(log_fes_myu, pairwise ~ Climate)
 
 ```
 
-#### Bromus diandrus
+#### Bromus hordeaceus
+
+- model drops climate
+- Arid > Int
+
 ```{r}
 bro_ho <- traits_19[traits_19$Species == "Bromus hordeaceus",] %>% 
   drop_na()
@@ -219,8 +223,8 @@ glm_bro_ho <- glm(data = bro_ho, LA ~ Climate * Treatment, family = gaussian, na
 dredge(glm_bro_ho) #drops treatment
 glm_bro_ho <- glm(data = bro_ho, LA ~ Climate, family = gaussian, na.action = na.fail)
 
-simulateResiduals(glm_bro_ho, plot=T)
-shapiro.test(residuals(glm_bro_ho)) #normal
+simulateResiduals(glm_bro_ho, plot=T) # good
+shapiro.test(residuals(glm_bro_ho)) # normal
 
 # post-hoc
 emmeans(glm_bro_ho, pairwise ~ Climate) # Arid > Int
@@ -239,7 +243,7 @@ bro_tec <- traits_19[traits_19$Species == "Bromus tectorum",] %>%
 glm_bro_tec <- glm(data = bro_tec, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_bro_tec) # best model has intercept only
 
-simulateResiduals(glm_bro_tec, plot=T)
+simulateResiduals(glm_bro_tec, plot=T) # good
 shapiro.test(residuals(glm_bro_tec)) #normal
 
 ```
@@ -279,11 +283,11 @@ ero_cic <- traits_19[traits_19$Species == "Erodium cicutarium",] %>%
 
 glm_ero_cic <- glm(data = ero_cic, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_ero_cic) # best model includes intercept only, but model with climate also has similar AIC value
-glm_ero_cic <- glm(data = ero_cic, LA ~ Climate, family = gaussian, na.action = na.fail)
+glm_ero_cic <- glm(data = ero_cic, LA ~ 1, family = gaussian, na.action = na.fail)
 
 # does data fit model?
-simulateResiduals(glm_ero_cic, plot=T) # major problems due to lack of data points?
-shapiro.test(residuals(glm_hor_mur))
+simulateResiduals(glm_ero_cic, plot=T) # good
+shapiro.test(residuals(glm_hor_mur)) # normal
 
 ```
 
@@ -314,6 +318,7 @@ emmeans(glm_gal_apa, pairwise ~ Climate)
 #### Plagiobothrys nothofulvus
 
 - forb
+- log transformed
 - best model is intercept only
 
 ```{r}
@@ -339,23 +344,70 @@ pla_not <- pla_not %>%
 glm_pla_not <- glm(data = pla_not, log_la ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_pla_not) # best model intercept only
 
-simulateResiduals(glm_pla_not, plot=T) #good
+simulateResiduals(glm_pla_not, plot=T) # good
 shapiro.test(residuals(glm_pla_not)) # normal
 
 ```
 
+#### Ribes californicum var. hesperium
+
+- shrub
+- model includes climate * treatment
+- Int > Mesic for Partial treatments
+- Open < Partial at Intermediate
+- Not enough data for other treatments at Int
+- No difference in treatments at Mesic
+
 ```{r}
-# Plagiobothrys nothofulvus (forb)
-glm_pla_not <- glm(data = traits_19[traits_19$Species == "Plagiobothrys nothofulvus",], LA ~ Climate * Treatment, family = gaussian)
+ribes <- traits_19[traits_19$Species == "Ribes californicum var. hesperium",] %>% 
+                 drop_na()
 
-# Ribes californicum var. hesperium (shrub)
-glm_ribes <- glm(data = traits_19[traits_19$Species == "Ribes californicum var. hesperium",], LA ~ Climate * Treatment, family = gaussian)
+glm_ribes <- glm(data = ribes, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
+dredge(glm_ribes)
 
-# Symphoricarpos_mollis (shrub)
-glm_sym_mol <- glm(data = traits_19[traits_19$Species == "Symphoricarpos_mollis",], LA ~ Treatment, family = gaussian) #only at Mesic climate
+simulateResiduals(glm_ribes, plot=T) # good
+shapiro.test(residuals(glm_ribes)) # normal
 
-# Ericameria nauseosa (shrub)
-glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",], LA ~ Climate * Treatment, family = gaussian)
+emmeans(glm_ribes, pairwise ~ Climate | Treatment)
+emmeans(glm_ribes, pairwise ~ Treatment | Climate)
+
+```
+
+#### Symphoricarpos_mollis
+
+- shrub
+- Only present at mesic
+- Best model is intercept only
+
+```{r}
+sym_mol <- traits_19[traits_19$Species == "Symphoricarpos_mollis",] %>% 
+                 drop_na()
+
+glm_sym_mol <- glm(data = sym_mol, LA ~ Treatment, family = gaussian, na.action = na.fail) #only at Mesic climate
+dredge(glm_sym_mol)
+glm_sym_mol <- glm(data = sym_mol, LA ~ 1, family = gaussian, na.action = na.fail) #only at Mesic climate
+
+simulateResiduals(glm_sym_mol, plot=T) #good
+shapiro.test(residuals(glm_sym_mol)) # normal
+
+
+```
+
+#### Ericameria nauseosa
+
+- shrub
+- best model is intercept only
+
+```{r}
+eri_nau <- traits_19[traits_19$Species == "Ericameria nauseosa",] %>% 
+  drop_na()
+
+glm_eri_nau <- glm(data = eri_nau, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
+dredge(glm_eri_nau)
+
+simulateResiduals(glm_eri_nau, plot=T) # good
+shapiro.test(residuals(glm_eri_nau)) # normal
+
 ```
 
 ## By functional group
@@ -364,15 +416,90 @@ glm_eri_nau <- glm(data = traits_19[traits_19$Species == "Ericameria nauseosa",]
 funct_LA <- traits_19 %>% 
   drop_na(LA) %>% 
   mutate(log_LA = log(LA)) %>% 
-  mutate(fact_Species = as.factor(Species))
+  mutate(fact_Species = as.factor(Species)) %>% 
+  mutate(sqrt_LA = sqrt(LA))
 
-ggplot(funct_LA, aes(x = LA, y = functional_group))+
-  geom_density_ridges()
+unique(funct_LA$Species)
+
+# finding counts per group
+funct_LA %>% 
+  group_by(Climate, Treatment, functional_group, Species) %>% 
+  count()
 
 ggplot(funct_LA, aes(x = LA)) +
   geom_histogram() +
   theme_bw()
 
+ggplot(funct_LA, aes(x = log_LA)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(funct_LA, aes(x = sqrt_LA)) +
+  geom_histogram() +
+  theme_bw()
+
+shapiro.test(funct_LA$log_LA)
+
+shapiro.test(funct_LA$sqrt_LA)
+
+```
+
+### GLMMs
+
+```{r}
+# Ideal model on un-transformed data:
+funct_glmm <- glmmTMB(data = funct_LA, LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = gaussian)
+dredge(funct_glmm) # best model only climate
+funct_glmm <- glmmTMB(data = funct_LA, LA ~ Climate + (1|Species), family = gaussian)
+
+simulateResiduals(funct_glmm, plot= T) # not good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+# Trying with log transformation:
+funct_glmm <- glmmTMB(data = funct_LA, log_LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = gaussian)
+dredge(funct_glmm)
+funct_glmm <- glmmTMB(data = funct_LA, log_LA ~ Climate + (1|Species), family = gaussian)
+
+simulateResiduals(funct_glmm, plot= T) # not good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+# Trying Gamma family with un-transformed
+funct_glmm <- glmmTMB(data = funct_LA, LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = Gamma(link = "log"))
+dredge(funct_glmm)
+funct_glmm <- glmmTMB(data = funct_LA, LA ~ Climate + (1|Species), family = Gamma(link = "log"))
+
+simulateResiduals(funct_glmm, plot= T) # not good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+# Trying gaussian with square root transform
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = gaussian)
+dredge(funct_glmm) # best model only climate
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + (1|Species), family = gaussian)
+
+simulateResiduals(funct_glmm, plot= T) # not good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+# gamma with square root
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = Gamma(link = "sqrt"))
+dredge(funct_glmm) # best model only climate
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + (1|Species), family = Gamma(link = "sqrt"))
+
+simulateResiduals(funct_glmm, plot= T) # good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+# gamma with square root
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + Treatment + Climate:Treatment + functional_group + (1|Species), family = Gamma(link = "log"))
+dredge(funct_glmm) # best model only climate
+funct_glmm <- glmmTMB(data = funct_LA, sqrt_LA ~ Climate + (1|Species), family = Gamma(link = "log"))
+
+simulateResiduals(funct_glmm, plot= T) # good
+shapiro.test(residuals(funct_glmm)) # not normal
+
+```
+
+### GLMs by group
+
+```{r}
 grass_LA <- traits_19 %>% 
   drop_na(LA) %>% 
   mutate(log_LA = log(LA)) %>% 
@@ -446,17 +573,12 @@ shapiro.test(residuals(funct_glm)) # not normal
 
 #random effect with gaussian
 funct_glm <- glm(data = funct_LA, LA ~ Climate + Treatment + functional_group + (1|fact_Species), family = "gaussian")
-funct_glm  <- glm(data = funct_LA, LA ~ Climate + (1|fact_Species), family = gaussian)
 
-test <- as.factor(funct_LA$Species)
-class(test)
 
 ```
 
 
 ```{r}
-
-
 
 grass_LA <- traits_19 %>% 
   drop_na(LA) %>% 
