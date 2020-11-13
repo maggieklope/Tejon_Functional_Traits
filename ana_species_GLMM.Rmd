@@ -260,7 +260,7 @@ Part of the issue here - is that you don't have all species across all climates.
 # 1d. fit only species across climates
 
 ```{r}
-traits_sp <- traits_19_ol %>%
+traits_sp <- traits_19 %>%
   filter(Species %in% c("Bromus diandrus", "Bromus hordeaceus", "Bromus_tectorum", "Festuca myuros",
                         "Galium aparine", "Hordeum murinum"))
 ```
