@@ -221,7 +221,6 @@ emmeans(SLA_CWM, pairwise ~ treatment)
 # emmeans(SLA_CWM, pairwise ~ climate * treatment)
 emmeans(SLA_CWM, pairwise ~ climate | treatment)
 
-
 ```
 
 
@@ -318,7 +317,6 @@ emmeans(LDMC_CWM, pairwise ~ treatment | climate)
 seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian)
 dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
 seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian)
-
 
 simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
 shapiro.test(residuals(seed_mass_CWM)) # not normal
