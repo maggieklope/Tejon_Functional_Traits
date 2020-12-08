@@ -385,6 +385,7 @@ dredge_table <- dredge_LA %>%
   full_join(dredge_log_seed_mass) %>% 
   full_join(dredge_log_n)
 
+
 # Trying gt package
 # data must be a tibble
 
