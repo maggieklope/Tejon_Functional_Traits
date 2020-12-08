@@ -103,7 +103,7 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 ```
 
-#### a. Leaf Area CWM
+#### a. LA CWM
 
 - Averaged over treatment, climate is different between Arid-Int and Arid-Mesic
 - Averaged over climate, treatment is different between Open-Total and Partial-Total, but not Open-Partial
@@ -125,6 +125,9 @@ cwm_traits_adj <- cwm_traits_adj %>%
 # Best fit model:
 LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
+dredge_LA <- dredge(LA_CWM) %>% 
+  # arrange(AICc)
+  filter(AICc == min(AICc))
 
 # Checking data
 simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
@@ -146,47 +149,8 @@ library(lsmeans)
 grid <- ref.grid(LA_CWM)
 plot(lsmeans(LA_CWM, ~ climate + treatment))
 
-```
-
-#### b. SLA CWM
-- Averaging for treatment, climate significanlty different between Arid-Int and Arid-Mesic
-- Averaging for climate, treatment significantly different between Open-Total and Partial-Total, but not Open-Partial
-- Once again, Arid Total larger than almost all other treatments
-- Arid trends:
-    - Arid Total larger than Arid Open and Arid Partial
-    - No significant difference between Arid Total & Partial
-- No different between Intermediate herbivore treatments
-- No difference between Mesic herbivore treatments
-- For Total exclosures, almost follows Arid > Int > Mesic
-    - Arid Total > Mesic Total
-    - Arid Total > Int total (almost significant, p=0.0546)
-    - Int Total > Mesic Total
-- Other significant difference:
-    - Arid Open > Mesic Open
-
-
-```{r}
-# Best fit model:
-LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(LA_CWM)# best model: weighted_la ~ climate * treatment
-
-# Checking data
-simulateResiduals(LA_CWM, plot= T) # looks good
-shapiro.test(residuals(LA_CWM)) # normal
-
-# pairwise comparisons
-emmeans(LA_CWM, pairwise ~ climate)
-emmeans(LA_CWM, pairwise ~ treatment)
-emmeans(LA_CWM, pairwise ~ climate * treatment)
-LA_pairs_1 <- emmeans(LA_CWM, pairwise ~ climate | treatment)
-LA_pairs_2 <- emmeans(LA_CWM, pairwise ~ treatment | climate)
-
-plot(emmeans(LA_CWM, pairwise ~ climate * treatment))
-
-as.data.frame(LA_pairs_1$contrasts)
 
 ```
-
 
 #### b. SLA CWM
 
@@ -205,7 +169,7 @@ as.data.frame(LA_pairs_1$contrasts)
 
 ```{r}
 # best fit model
-SLA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian) 
+SLA_CWM <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
 #NEED TO DO MODEL AVERAGE
 
@@ -254,10 +218,11 @@ emmeans(SLA_CWM, pairwise ~ climate | treatment)
     - No difference between Arid-Total and Mesic-Total
 
 ```{r}
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian) 
+LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-LDMC_CWM <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian) 
-
+dredge_LDMC <- dredge(LDMC_CWM) %>% 
+  filter(AICc == min(AICc))
+LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
 simulateResiduals(LDMC_CWM, plot= T) #looks good
 shapiro.test(residuals(LDMC_CWM)) #normal
@@ -314,17 +279,17 @@ emmeans(LDMC_CWM, pairwise ~ treatment | climate)
     - No difference between Arid and Mesic
 
 ```{r}
-seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian)
+seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
-seed_mass_CWM <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian)
+seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
 simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
 shapiro.test(residuals(seed_mass_CWM)) # not normal
 
 # log transformation
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian)
+log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian)
+log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
 simulateResiduals(log_seed_mass, plot= T) #looks ok
 shapiro.test(residuals(log_seed_mass)) #normal
@@ -363,18 +328,18 @@ emmeans(log_seed_mass, pairwise ~ climate | treatment)
     - Int-Total > Mesic-Total
 
 ```{r} 
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
+leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
+leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
 
 simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
 shapiro.test(residuals(seed_mass_CWM)) # not normal
 
 # log transformation
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian)
+log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
-log_seed_mass <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian)
+log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
 simulateResiduals(log_seed_mass, plot= T) #looks ok
 shapiro.test(residuals(log_seed_mass)) #normal
@@ -411,17 +376,17 @@ emmeans(log_seed_mass, pairwise ~ climate | treatment)
 
 
 ```{r} 
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian) 
+leaf_n_CWM <- glmm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-leaf_n_CWM <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian) 
+leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
 simulateResiduals(leaf_n_CWM, plot= T) #looks bad
 shapiro.test(residuals(leaf_n_CWM)) #not normal
 
 #log transformation
-log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian) 
+log_n_CWM <- glm(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(log_n_CWM) #get: Fixed terms are "cond((Int))" and "disp((Int))"
-log_n_CWM <- glmmTMB(data = cwm_traits_adj, log_n ~ climate + treatment, family = gaussian) 
+log_n_CWM <- glm(data = cwm_traits_adj, log_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
 simulateResiduals(log_n_CWM, plot= T) #doesn't look very good
 shapiro.test(residuals(log_n_CWM)) #p = 0.05924
@@ -548,7 +513,7 @@ LA_funct_sig_pairs
 
 ```{r}
 
-grass_glm <- glmmTMB(data = grass, weighted_la ~ climate * treatment, family = gaussian)
+grass_glm <- glm(data = grass, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(grass_glm) # best model: trait ~ climate * treatment
 
 simulateResiduals(grass_glm, plot= T) #good
@@ -562,9 +527,9 @@ emmeans(grass_glm, pairwise ~ climate | treatment)
 #### b. forbs
 
 ```{r}
-forb_glm <- glmmTMB(data = forb, weighted_la ~ climate * treatment, family = gaussian)
+forb_glm <- glm(data = forb, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(forb_glm) # NEED TO DO MODEL AVERAGING
-forb_glm <- glmmTMB(data = forb, weighted_la ~ treatment, family = gaussian)
+forb_glm <- glm(data = forb, weighted_la ~ treatment, family = gaussian, na.action = na.fail)
 
 simulateResiduals(forb_glm, plot= T) #residuals vs. predicted not good
 shapiro.test(residuals(forb_glm)) #normal
@@ -575,9 +540,9 @@ shapiro.test(residuals(forb_glm)) #normal
 #### c. shrubs
 
 ```{r}
-shrub_glm <- glmmTMB(data = shrub, weighted_la ~ climate * treatment, family = gaussian)
+shrub_glm <- glm(data = shrub, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(shrub_glm) # best model: trait ~ climate
-shrub_glm  <- glmmTMB(data = shrub, weighted_la ~ climate, family = gaussian)
+shrub_glm  <- glm(data = shrub, weighted_la ~ climate, family = gaussian, na.action = na.fail)
 
 simulateResiduals(shrub_glm, plot= T) # can't do predicted plot
 shapiro.test(residuals(shrub_glm)) #normal
