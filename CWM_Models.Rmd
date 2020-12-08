@@ -393,7 +393,7 @@ pretty_table <- dredge_table %>%
   as_tibble() %>% 
   gt() %>% 
   tab_header(
-    title = "Best-Fit Models"
+    title = "CWM Best-Fit Models & AIC Values"
   ) %>% 
   tab_spanner(
     label = "Fixed Effects Terms",
