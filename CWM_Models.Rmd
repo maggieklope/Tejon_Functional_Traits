@@ -125,9 +125,6 @@ cwm_traits_adj <- cwm_traits_adj %>%
 # Best fit model:
 LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
-dredge_LA <- dredge(LA_CWM) %>% 
-  # arrange(AICc)
-  filter(AICc == min(AICc))
 
 # Checking data
 simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
@@ -220,8 +217,6 @@ emmeans(SLA_CWM, pairwise ~ climate | treatment)
 ```{r}
 LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-dredge_LDMC <- dredge(LDMC_CWM) %>% 
-  filter(AICc == min(AICc))
 LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
 simulateResiduals(LDMC_CWM, plot= T) #looks good
@@ -327,56 +322,9 @@ emmeans(log_seed_mass, pairwise ~ climate | treatment)
     - Arid-Total > Mesic-Total
     - Int-Total > Mesic-Total
 
+
 ```{r} 
 leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
-dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
-
-
-simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
-shapiro.test(residuals(seed_mass_CWM)) # not normal
-
-# log transformation
-log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
-log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
-
-simulateResiduals(log_seed_mass, plot= T) #looks ok
-shapiro.test(residuals(log_seed_mass)) #normal
-
-seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatment))) %>% 
-  filter(p.value <= 0.05)
-
-# emmeans(log_seed_mass, pairwise ~ climate * treatment)
-emmeans(log_seed_mass, pairwise ~ climate | treatment)
-
-```
-
-
-#### e. Leaf-N CWM
-
-- No difference between any of the different herbivore treatments within climates
-- Same pattern observed between treatments at different climates
-
-- Arid:
-    - No difference between treatments at Arid
-- Int:
-     - No difference between  treatments at Int
-- Mesic:
-    - No difference between treatments at Mesic
-- Open:
-    - Arid-Open > Mesic-Open
-    - Int-Open > Mesic-Open
-- Partial:
-    - Arid-Partial > Mesic-Partial
-    - Int-Partial > Mesic-Partial
-- Total:
-    - Arid-Total > Mesic-Total
-    - Int-Total > Mesic-Total
-
-
-```{r} 
-leaf_n_CWM <- glmm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
 leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
 
@@ -400,6 +348,43 @@ LNC_sig_pairs <- LNC_pairs %>%
 # emmeans(log_n_CWM, pairwise ~ climate + treatment)
 emmeans(log_n_CWM, pairwise ~ climate | treatment)
 ```
+
+#### f. Best-fit/AIC Table
+
+```{r}
+dredge_LA <- dredge(LA_CWM) %>%
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "Leaf Area") %>%
+  select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_SLA <-  dredge(SLA_CWM) %>% 
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "Specific Leaf Area") %>%
+  select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_LDMC <- dredge(LDMC_CWM) %>% 
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "Leaf Dry Matter Content") %>%
+  select(CWM, climate, treatment, AICc)
+
+dredge_log_seed_mass <- dredge(log_seed_mass) %>% 
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "Seed Mass (log)") %>%
+  select(CWM, climate, treatment, AICc)
+
+dredge_log_n <- dredge(log_n_CWM) %>% 
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log)") %>%
+  select(CWM, climate, treatment, AICc)
+
+dredge_table <- dredge_LA %>% 
+  full_join(dredge_SLA) %>% 
+  full_join(dredge_LDMC) %>% 
+  full_join(dredge_log_seed_mass) %>% 
+  full_join(dredge_log_n)
+
+```
+
 
 ### Functional Groups
 
