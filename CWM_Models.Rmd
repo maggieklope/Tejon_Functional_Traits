@@ -413,6 +413,10 @@ pretty_table <- dredge_table %>%
 
 pretty_table
 
+class(pretty_table)
+
+gtsave(data = pretty_table, filename = "CWM_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
 ```
 
 
