@@ -5,6 +5,7 @@ date: "10/18/2020"
 output: html_document
 ---
 
+### Packages and Data
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -205,7 +206,7 @@ FD_all %>%
   theme_bw() +
   facet_wrap(~FD, scales = "free")
 
-ggsave("Functional_Diversity_Barchart.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# ggsave("Functional_Diversity_Barchart.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
@@ -242,7 +243,7 @@ dredge(FRic) #best model: FRic ~ climate * treatment
 simulateResiduals(FRic, plot=T) # looks ok
 shapiro.test(residuals(FRic)) # residuals are normal
 
-# significatn pairs
+# significant pairs
 FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>% 
   filter(p.value <= 0.05)
 
@@ -378,6 +379,7 @@ emmeans(FDis, pairwise ~ climate | treatment)
 
 ```
 
+#### RaoQ
 
 ```{r RaoQ, include=FALSE}
 RaoQ <- glmmTMB(data = FD_all, RaoQ ~ climate * treatment, family = gaussian)
@@ -395,3 +397,61 @@ RaoQ_sig_pairs <-  as.data.frame(pairs(emmeans(RaoQ, ~ climate * treatment)))%>%
 emmeans(RaoQ, pairwise ~ climate * treatment)
 
 ```
+
+#### Best-Fit & AIC Table
+
+```{r}
+
+dredge_FRic <- dredge(FRic) %>%
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "FRic") %>%
+  select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_FEve <- dredge(FEve) %>%
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "FEve") %>%
+  select(CWM, AICc)
+
+dredge_FDiv <- dredge(FDiv) %>%
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "FDiv") %>%
+  select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_FDis <- dredge(FDis) %>%
+  filter(AICc == min(AICc)) %>% 
+  mutate(CWM = "FDis") %>%
+  select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_table <- dredge_FRic %>% 
+  full_join(dredge_FEve) %>% 
+  full_join(dredge_FDiv) %>% 
+  full_join(dredge_FDis)
+
+pretty_table <- dredge_table %>% 
+  as_tibble() %>% 
+  gt() %>% 
+  tab_header(
+    title = "FD Best-Fit Models & AIC Values"
+  ) %>% 
+  tab_spanner(
+    label = "Fixed Effects Terms",
+    columns = vars(climate, treatment, "climate:treatment")
+  ) %>% 
+  fmt_number(
+    columns = vars(AICc),
+    decimals = 2
+  ) %>% 
+  fmt_missing(
+    columns = vars(climate, treatment, "climate:treatment"),
+    missing_text = " "
+  ) %>% 
+  tab_source_note(
+    source_note = "+ indicates selection of fixed effect term for best-fit model"
+  )
+
+# pretty_table
+
+gtsave(data = pretty_table, filename = "FD_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+```
+
