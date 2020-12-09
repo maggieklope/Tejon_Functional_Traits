@@ -5,7 +5,6 @@ date: "10/18/2020"
 output: html_document
 ---
 
-### Packages and Data
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -18,6 +17,7 @@ library(glmmTMB) #model fitting
 library(MuMIn) #model summaries and comparisons
 library(emmeans) #post-hoc analyses
 # library(performance) #for R2 values
+library(gt)
 ```
 
 ```{r tidy data, include=FALSE}
@@ -367,7 +367,7 @@ dredge(FDis) #best model: FDis ~ climate * treatment
 simulateResiduals(FDis, plot=T) # looks ok
 shapiro.test(residuals(FDis)) # residuals are normal
 
-# significatn pairs
+# significant pairs
 FDis_sig_pairs <-  as.data.frame(pairs(emmeans(FDis, ~ climate * treatment)))%>% 
   filter(p.value <= 0.05)
 
@@ -389,7 +389,7 @@ dredge(RaoQ) #best model: RaoQ ~ climate * treatment
 simulateResiduals(RaoQ, plot=T) # Looks like there is a weird pattern
 shapiro.test(residuals(RaoQ)) # but residuals are normal
 
-#significatn pairs
+#significant pairs
 RaoQ_sig_pairs <-  as.data.frame(pairs(emmeans(RaoQ, ~ climate * treatment)))%>% 
   filter(p.value <= 0.05)
 
@@ -451,7 +451,7 @@ pretty_table <- dredge_table %>%
 
 # pretty_table
 
-gtsave(data = pretty_table, filename = "FD_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# gtsave(data = pretty_table, filename = "FD_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
