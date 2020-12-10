@@ -184,6 +184,30 @@ ggplot(data, aes(x = contrast, y = estimate)) +
   # geom_ribbon(aes(ymin = data$lower_limit, ymax = data$upper_limit), linetype=2, alpha=0.1)
   geom_errorbar(aes(ymin = data$lower_limit, ymax = data$upper_limit))
   
+# trying to set own colors
+
+arrow_colors <- function(climates){
+  if (climates == "Arid") return({"red"})
+  if (climates == "Intermediate") return({"orange"})
+  if (climates == "Mesic") return({"blue"})
+}
+
+arrow_colors <- function(input){
+  if (input == "Open") return({"red"})
+  if (input == "Partial") return({"orange"})
+  if (input == "Total") return({"blue"})
+}
+
+as.data.frame(test)
+
+plot(test, 
+     type = "response",
+     CI = FALSE,
+     comparisons = TRUE, # If arrows overlap, they are not statistically significant
+     colors = c("black", "black", "blue", arrow_colors(climate))) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+  # this is a ggplot so you can customize as normal
+  theme_bw() +   
+  labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
 
 ```
 
@@ -481,10 +505,27 @@ gtsave(data = pretty_table, filename = "CWM_AIC_table.png", path = "~/github/Tej
 #### g. EMM Graphs
 
 ```{r}
+
+arrow_colors <- function(climates){
+  if (climates == "Arid") return({"red"})
+  if (climates == "Intermediate") return({"orange"})
+  if (climates == "Mesic") return({"blue"})
+}
+
+arrow_colors <- function(input){
+  if (input == "Open") return({"red"})
+  if (input == "Partial") return({"orange"})
+  if (input == "Total") return({"blue"})
+}
+
 # making a function
 emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
   if (Climate == TRUE && Treatment == TRUE) return({
-    plot(emmeans(model, ~ climate | treatment), CIs = FALSE, type = "response", comparisons = TRUE, colors = c("black", "black", "blue", "black")) +
+    plot(emmeans(model, ~ climate | treatment), 
+         CIs = FALSE, 
+         type = "response", 
+         comparisons = TRUE, 
+         colors = c("black", "black", "blue", arrow_colors(treatment))) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
       theme_bw() +
       labs(x = "Estimated marginal mean", y = "Climate")
     })
@@ -505,8 +546,7 @@ emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
 
 # Leaf Area
 plot1 <- emm_plot(model = LA_CWM) +
-  labs(title = "Leaf Area CWM") +
-  scale_color_manual(values=cols)
+  labs(title = "Leaf Area CWM")
 plot1
 
 # SLA
