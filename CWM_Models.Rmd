@@ -211,6 +211,8 @@ plot(test,
 
 ```
 
+
+
 ```{r}
 # double-checking against anova results
 LA_aov <- aov(data = cwm_traits_adj, weighted_la ~ climate * treatment)
@@ -571,6 +573,28 @@ ggsave("CWM_emmeans.png", plot = CWM_emmeans_all, path = "~/github/Tejon_Functio
 
 ```
 
+#### h. testing model summary package
+
+```{r}
+library(modelsummary)
+
+modelsummary::datasummary_skim(cwm_traits_adj)
+
+models <- list("SLA" = SLA_CWM, 
+               "Leaf Area" = LA_CWM)
+
+names <- c("climateIntermediate" = "Intermediate Climate", 
+           "climateMesic" = "Mesic Climate",
+           "treatmentTotal" = "Total Treatment",
+           "treatmentPartial" = "Partial Treatment",
+           "climateIntermediate × treatmentPartial"= "Intermediate Climate × Partial Treatment")
+
+modelsummary::modelsummary(models, 
+                           title = "Community-weighted Means Models",
+                           coef_rename = names,
+                           stars = TRUE) # won't let me change name of interaction coefficients
+
+```
 
 ### Functional Groups
 
