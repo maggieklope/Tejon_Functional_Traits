@@ -162,10 +162,10 @@ plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
 # compact letter displays
 # multcomp::cld(pairs(emmeans(LA_CWM, ~ climate | treatment)))
 
-# test <- emmeans(LA_CWM, pairwise ~ climate | treatment)
+test <- emmeans(LA_CWM, pairwise ~ climate | treatment)
 
-data <- as.data.frame(test$contrasts) %>% 
-  mutate(upper_limit = estimate +  SE) %>% 
+data <- as.data.frame(test$contrasts) %>%
+  mutate(upper_limit = estimate +  SE) %>%
   mutate(lower_limit = estimate -  SE)
 
 # emmeans::contrast(test)
@@ -438,40 +438,42 @@ LNC_sig_pairs <- LNC_pairs %>%
 emmeans(log_n_CWM, pairwise ~ climate | treatment)
 ```
 
-#### f. Best-fit/AIC Table
+#### f. Best-fit Model Table
 
 ```{r}
-dredge_LA <- dredge(LA_CWM) %>%
+dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
   filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Leaf Area") %>%
-  select(CWM, climate, treatment, "climate:treatment", AICc)
+  mutate(CWM = "Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment")
 
-dredge_SLA <-  dredge(SLA_CWM) %>% 
+dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Specific Leaf Area") %>%
-  select(CWM, climate, treatment, "climate:treatment", AICc)
+  select(CWM, climate, treatment, "climate:treatment")
 
-dredge_LDMC <- dredge(LDMC_CWM) %>% 
+dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Dry Matter Content") %>%
-  select(CWM, climate, treatment, AICc)
+  select(CWM, climate, treatment)
 
-dredge_log_seed_mass <- dredge(log_seed_mass) %>% 
+dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Seed Mass (log)") %>%
-  select(CWM, climate, treatment, AICc)
+  select(CWM, climate, treatment)
 
-dredge_log_n <- dredge(log_n_CWM) %>% 
+dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Nitrogen Content (log)") %>%
-  select(CWM, climate, treatment, AICc)
+  select(CWM, climate, treatment)
 
 dredge_table <- dredge_LA %>% 
   full_join(dredge_SLA) %>% 
   full_join(dredge_LDMC) %>% 
   full_join(dredge_log_seed_mass) %>% 
-  full_join(dredge_log_n)
-
+  full_join(dredge_log_n) %>% 
+  mutate(climate = str_replace(climate, "\\+","x")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
 
 # Trying gt package
 # data must be a tibble
@@ -480,22 +482,18 @@ pretty_table <- dredge_table %>%
   as_tibble() %>% 
   gt() %>% 
   tab_header(
-    title = "CWM Best-Fit Models & AIC Values"
+    title = "CWM Best-Fit Models"
   ) %>% 
   tab_spanner(
     label = "Fixed Effects Terms",
     columns = vars(climate, treatment, "climate:treatment")
-  ) %>% 
-  fmt_number(
-    columns = vars(AICc),
-    decimals = 2
   ) %>% 
   fmt_missing(
     columns = vars(climate, treatment, "climate:treatment"),
     missing_text = " "
   ) %>% 
   tab_source_note(
-    source_note = "+ indicates selection of fixed effect term for best-fit model"
+    source_note = "x indicates selection of fixed effect term for best-fit model"
   )
 
 # pretty_table
@@ -545,6 +543,25 @@ emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
     print("no inputs")
     })
 }
+
+plot(emmeans(LA_CWM, ~ climate | treatment), 
+     CIs = FALSE, 
+     type = "response", 
+     comparisons = TRUE, 
+     colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+  theme_bw() +
+  labs(x = "Estimated marginal mean", y = "Climate") +
+  facet_grid(. ~treatment) +
+  aes(fill = as.factor(treatment)) +
+  geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"), 
+               color = c("red", "orange", "blue", "red", "orange", "blue", "red", "orange", "blue")) + 
+  geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac), 
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"), 
+               color = c("red", "orange", "blue", "red", "orange", "blue", "red", "orange", "blue")) + 
+  coord_flip() +
+  theme_gray() +
+  theme(legend.position = "none")
 
 # Leaf Area
 plot1 <- emm_plot(model = LA_CWM) +
@@ -598,7 +615,7 @@ modelsummary::modelsummary(models,
 
 ### Functional Groups
 
-- I started setting this up to look at changes in weighted means when grouped by funcitonal group, but I think it would be more interesting to use the species-level, un-weighted data.
+- I started setting this up to look at changes in weighted means when grouped by functional group, but I think it would be more interesting to use the species-level, un-weighted data.
 
 ```{r}
 cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
