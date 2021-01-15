@@ -21,6 +21,7 @@ library(tibble)
 library(lsmeans)
 library(gridExtra)
 library(multcomp)
+library(car)
 
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
 
@@ -66,49 +67,7 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
   facet_wrap(~traits, scales = "free", nrow = 3) +
   scale_fill_manual(values = c("#ffffff", "#d9d9d9", "#969696"))
 
-  # scale_fill_manual(values = c("#fec44f", "#ffeda0", "#969696"))
-
-# ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 5, height = 10)
-
-```
-
-```{r, include=FALSE}
-
-# # Looking at distributions
-# # LA and SLA are not normally distributed, but glm residuals come back as normal
-# 
-# ggplot(cwm_traits_adj, aes(x = weighted_la)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# shapiro.test(cwm_traits_adj$weighted_la) # not normal
-# 
-# ggplot(cwm_traits_adj, aes(x = weighted_sla)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# shapiro.test(cwm_traits_adj$weighted_sla) # not normal
-# 
-# ggplot(cwm_traits_adj, aes(x = weighted_ldmc)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# shapiro.test(cwm_traits_adj$weighted_ldmc) # normal
-# 
-# # seed mass and leaf n are not normally distributed, and the glm residuals come back as not normal, so I have done a log transformation:
-# 
-# ggplot(cwm_traits_adj, aes(x = weighted_seed_mass)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# shapiro.test(cwm_traits_adj$weighted_seed_mass) # not normal
-# 
-# ggplot(cwm_traits_adj, aes(x = weighted_n)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# shapiro.test(cwm_traits_adj$weighted_n) # not normal
-
+ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7)
 
 ```
 
@@ -186,17 +145,17 @@ test_2 <- as.data.frame(pairs(emmeans(LA_CWM, ~ climate * treatment))) %>%
   mutate(lower_limit = estimate -  SE)
 
 # trying to set own colors
-arrow_colors <- function(climates){
-  if (climates == "Arid") return({"red"})
-  if (climates == "Intermediate") return({"orange"})
-  if (climates == "Mesic") return({"blue"})
-}
-
-arrow_colors <- function(input){
-  if (input == "Open") return({"red"})
-  if (input == "Partial") return({"orange"})
-  if (input == "Total") return({"blue"})
-}
+# arrow_colors <- function(climates){
+#   if (climates == "Arid") return({"red"})
+#   if (climates == "Intermediate") return({"orange"})
+#   if (climates == "Mesic") return({"blue"})
+# }
+# 
+# arrow_colors <- function(input){
+#   if (input == "Open") return({"red"})
+#   if (input == "Partial") return({"orange"})
+#   if (input == "Total") return({"blue"})
+# }
 
 plot(test, 
      type = "response",
@@ -270,7 +229,12 @@ SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>%
 emmeans(SLA_CWM, pairwise ~ climate)
 emmeans(SLA_CWM, pairwise ~ treatment)
 # emmeans(SLA_CWM, pairwise ~ climate * treatment)
-emmeans(SLA_CWM, pairwise ~ climate | treatment)
+emmeans(SLA_CWM, pairwise ~ treatment | climate)
+
+plot(emmeans(SLA_CWM, pairwise ~ treatment | climate), comparisons = TRUE)
+
+sla_emm <- emmeans(SLA_CWM, ~ climate)
+multcomp::cld(sla_emm, alpha = 0.05, Letters = LETTERS)
 
 ```
 
@@ -332,8 +296,11 @@ emmeans(LDMC_CWM, pairwise ~ treatment)
 # emmeans(LDMC_CWM, pairwise ~ climate + treatment)
 emmeans(LDMC_CWM, pairwise ~ climate | treatment)
 emmeans(LDMC_CWM, pairwise ~ treatment | climate)
+emmeans(LDMC_CWM, pairwise ~ treatment * climate)
 
+plot(emmeans(LDMC_CWM, pairwise ~ treatment | climate), comparisons = TRUE)
 
+multcomp::cld(emmeans(LDMC_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
 
@@ -379,7 +346,6 @@ log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment,
 simulateResiduals(log_seed_mass, plot= T) #looks ok
 shapiro.test(residuals(log_seed_mass)) #normal
 
-
 #pairwise comparisons
 seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatment))) %>% 
   filter(p.value <= 0.05)
@@ -387,7 +353,10 @@ seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatm
 emmeans(log_seed_mass, pairwise ~ climate)
 emmeans(log_seed_mass, pairwise ~ treatment)
 # emmeans(log_seed_mass, pairwise ~ climate + treatment)
-emmeans(log_seed_mass, pairwise ~ climate | treatment)
+emmeans(log_seed_mass, pairwise ~ treatment * climate)
+
+plot(emmeans(log_seed_mass, pairwise ~ treatment | climate))
+multcomp::cld(emmeans(log_seed_mass, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
 
@@ -437,6 +406,9 @@ LNC_sig_pairs <- LNC_pairs %>%
 
 # emmeans(log_n_CWM, pairwise ~ climate + treatment)
 emmeans(log_n_CWM, pairwise ~ climate | treatment)
+
+plot(emmeans(log_n_CWM, pairwise ~ treatment | climate))
+multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
 ```
 
 #### f. Best-fit Model Table
@@ -503,69 +475,128 @@ gtsave(data = pretty_table, filename = "CWM_AIC_table.png", path = "~/github/Tej
 
 ```
 
-e#### g. EMM Graphs
+#### g. EMM Graphs
 
 ```{r}
 
-arrow_colors <- function(climates){
-  if (climates == "Arid") return({"red"})
-  if (climates == "Intermediate") return({"orange"})
-  if (climates == "Mesic") return({"blue"})
-}
+# arrow_colors <- function(climates){
+#   if (climates == "Arid") return({"red"})
+#   if (climates == "Intermediate") return({"orange"})
+#   if (climates == "Mesic") return({"blue"})
+# }
+# 
+# arrow_colors <- function(input){
+#   if (input == "Open") return({"red"})
+#   if (input == "Partial") return({"orange"})
+#   if (input == "Total") return({"blue"})
+# }
 
-arrow_colors <- function(input){
-  if (input == "Open") return({"red"})
-  if (input == "Partial") return({"orange"})
-  if (input == "Total") return({"blue"})
-}
+arrow_colors <- (rep(c("red", "orange", "blue"), 3))
 
 # making a function
 emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
+  
   if (Climate == TRUE && Treatment == TRUE) return({
-    plot(emmeans(model, ~ climate | treatment), 
-         CIs = FALSE, 
-         type = "response", 
-         comparisons = TRUE, 
-         colors = c("black", "black", "blue", arrow_colors(treatment))) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+    
+    plot(emmeans(model, ~treatment | climate ),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
       theme_bw() +
-      labs(x = "Estimated marginal mean", y = "Climate")
+      theme(legend.position = "none")
+
     })
+  
   if (Climate == TRUE && Treatment == FALSE) return({
-    plot(emmeans(LA_CWM, ~ climate), type = "response", comparisons = TRUE, colors = c("black", "black", "blue", "black")) + 
+    
+    plot(emmeans(model, ~climate),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
       theme_bw() +
-      labs(x = "Estimated marginal mean", y = "Climate")
+      theme(legend.position = "none")
+
     })
+  
   if (Climate == FALSE && Treatment == TRUE) return({
-    plot(emmeans(LA_CWM, ~ treatment), type = "response", comparisons = TRUE, colors = c("black", "black", "blue", "black")) + 
+    
+    plot(emmeans(model, ~treatment),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
       theme_bw() +
-      labs(x = "Estimated marginal mean", y = "Treatment")
+      theme(legend.position = "none")
+
     })
+  
   if (Climate == FALSE && Treatment == FALSE) return({
     print("no inputs")
     })
 }
 
-plot(emmeans(LA_CWM, ~ climate | treatment), 
-     CIs = FALSE, 
-     type = "response", 
-     comparisons = TRUE, 
-     colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-  theme_bw() +
-  labs(x = "Estimated marginal mean", y = "Climate") +
-  facet_grid(. ~treatment) +
-  aes(fill = as.factor(treatment)) +
-  geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"), 
-               color = c("red", "orange", "blue", "red", "orange", "blue", "red", "orange", "blue")) + 
-  geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac), 
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"), 
-               color = c("red", "orange", "blue", "red", "orange", "blue", "red", "orange", "blue")) + 
-  coord_flip() +
-  theme_gray() +
-  theme(legend.position = "none")
+# plot(emmeans(LA_CWM, ~ treatment | climate),
+#      CIs = FALSE,
+#      type = "response",
+#      comparisons = TRUE,
+#     colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+#   labs(x = "EMM", y = "Climate") +
+#   facet_grid(. ~climate) +
+#   aes(fill = as.factor(treatment)) +
+#   geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+#                color = arrow_colors) +
+#   geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+#                color = arrow_colors) +
+#   coord_flip() +
+#   geom_point(aes_(fill = "black"))+
+#   theme_bw() +
+#   theme(legend.position = "none")
+
+# la_emm <- emmeans(LA_CWM, ~ climate)
+# la_emm <- emmeans(LA_CWM, ~ treatment)
+# la_emm <- emmeans(LA_CWM, ~ treatment * climate)
+# la_cdf <- multcomp::cld(la_emm, level = 0.05, Letters = LETTERS)
+# plot(emmeans(LA_CWM, ~ treatment * climate), comparisons = TRUE)
 
 # Leaf Area
-plot1 <- emm_plot(model = LA_CWM) +
+plot1 <- emm_plot(model = LA_CWM, Climate = TRUE, Treatment = TRUE) +
   labs(title = "Leaf Area CWM")
 plot1
 
@@ -587,7 +618,7 @@ plot5 <- emm_plot(model = log_n_CWM) +
 
 CWM_emmeans_all <- grid.arrange(plot1, plot2, plot3, plot4, plot5, ncol = 2)
 
-ggsave("CWM_emmeans.png", plot = CWM_emmeans_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
+ggsave("CWM_emmeans_3.png", plot = CWM_emmeans_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
 
 ```
 
@@ -619,7 +650,7 @@ modelsummary::modelsummary(models,
 - I started setting this up to look at changes in weighted means when grouped by functional group, but I think it would be more interesting to use the species-level, un-weighted data.
 
 ```{r}
-cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+cwm_functional <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
   left_join(other_traits, by = "species_name") %>% 
   mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
   mutate(weighted_sla = sla * Abundance) %>% 
@@ -628,7 +659,7 @@ cwm_functional <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
   mutate(weighted_n = leaf_n * Abundance) %>%
   group_by(climate, treatment, Block, functional_group) %>% #grouping by climate, treatment, and block
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-  select(climate, treatment, functional_group, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+  dplyr::select(climate, treatment, functional_group, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
 cwm_functional %>%
   pivot_longer(cols = weighted_la:weighted_n,
@@ -643,7 +674,8 @@ grass <- cwm_functional %>%
   filter(functional_group == "grass")
 
 forb <- cwm_functional %>% 
-  filter(functional_group == "forb")
+  filter(functional_group == "forb") %>% 
+  mutate(sqrt_la = sqrt(weighted_la))
 
 shrub <- cwm_functional %>% 
   filter(functional_group == "shrub")
@@ -652,6 +684,7 @@ shrub <- cwm_functional %>%
 
 #### CWMs with interaction between climate, treatment, and functional group
 
+##### leaf area
 ```{r}
 #leaf area is very skewed:
 ggplot(cwm_functional, aes(x = weighted_la)) +
@@ -707,60 +740,403 @@ funct_la <- glm(data = cwm_functional, log_plus_la ~ climate + treatment + funct
 simulateResiduals(funct_la, plot= T) #good
 shapiro.test(residuals(funct_la)) #residuals are normal
 
-emmeans(funct_la, pairwise ~ climate | functional_group)
+emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
 emmeans(funct_la, pairwise ~ treatment | functional_group)
+emmeans(funct_la, pairwise ~ functional_group)
 
-LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>% 
-  separate(contrast, c("A", "B"), sep = " - ") %>% 
-  separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>% 
-  separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>% 
-  filter((A_climate == B_climate & A_functional_group == B_functional_group) | 
-          (A_climate == B_climate & A_treatment == B_treatment) | 
-           (A_treatment == B_treatment & A_functional_group == B_functional_group))
-  
-?emmeans()
-  
-LA_funct_sig_pairs
+# LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>% 
+#   separate(contrast, c("A", "B"), sep = " - ") %>% 
+#   separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>% 
+#   separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>% 
+#   filter((A_climate == B_climate & A_functional_group == B_functional_group) | 
+#           (A_climate == B_climate & A_treatment == B_treatment) | 
+#            (A_treatment == B_treatment & A_functional_group == B_functional_group))
+# LA_funct_sig_pairs
 
 ```
-
-#### a. grasses
-
+##### specific leaf area
 ```{r}
+#leaf area is very skewed:
+ggplot(cwm_functional, aes(x = weighted_sla)) +
+  geom_histogram() +
+  theme_bw()+
+  facet_wrap(~functional_group)
 
-grass_glm <- glm(data = grass, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(grass_glm) # best model: trait ~ climate * treatment
+cwm_functional <- cwm_functional %>% 
+  mutate(log_sla = log(weighted_sla))
 
-simulateResiduals(grass_glm, plot= T) #good
-shapiro.test(residuals(grass_glm)) #normal
+funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_sla)
 
-summary(grass_glm)
-# emmeans(grass_glm, pairwise ~ climate * treatment)
-emmeans(grass_glm, pairwise ~ climate | treatment)
+simulateResiduals(funct_sla, plot= T) #does not pass dispersion test
+shapiro.test(residuals(funct_sla)) # not normal
+
+#trying log transformation with gaussian
+funct_sla <- glm(data = cwm_functional, log_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_sla)
+funct_sla <- glm(data = cwm_functional, log_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_sla, plot= T) # good
+shapiro.test(residuals(funct_sla)) # not normal
+
+# trying Gamma with log link on un-transformed
+funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = Gamma, na.action = na.fail)
+dredge(funct_sla)
+funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate + functional_group + treatment + climate:functional_group, family = Gamma, na.action = na.fail)
+
+simulateResiduals(funct_sla, plot= T) # not normal
+shapiro.test(residuals(funct_sla)) # not normal
+
+#trying log+1 with gaussian
+cwm_functional <- cwm_functional %>% 
+  mutate(log_plus_sla = log(weighted_sla + 1))
+
+funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_sla)
+funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_sla, plot= T) #good
+shapiro.test(residuals(funct_sla)) #normal
+
+emmeans(funct_sla, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_sla, pairwise ~ treatment | functional_group)
+emmeans(funct_sla, pairwise ~ functional_group)
+
+```
+##### ldmc
+```{r}
+cwm_functional <- cwm_functional %>% 
+  mutate(log_ldmc = log(weighted_ldmc))
+
+funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_ldmc)
+funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
+
+simulateResiduals(funct_ldmc, plot= T) # does not pass dispersion test
+shapiro.test(residuals(funct_ldmc)) # not normal
+
+funct_ldmc <- glm(data = cwm_functional, log_ldmc ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_ldmc)
+funct_ldmc <- glm(data = cwm_functional, log_ldmc ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
+
+simulateResiduals(funct_ldmc, plot= T) # ok
+shapiro.test(residuals(funct_ldmc)) # normal
+
+emmeans(funct_ldmc, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
+emmeans(funct_ldmc, pairwise ~ functional_group)
+```
+##### lnc
+```{r}
+funct_n <- glm(data = cwm_functional, weighted_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_n)
+funct_n <- glm(data = cwm_functional, weighted_n ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
+
+simulateResiduals(funct_n, plot= T) # not good
+shapiro.test(residuals(funct_n)) # not normal
+
+cwm_functional <- cwm_functional %>% 
+  mutate(log_n = log(weighted_n)) %>% 
+  mutate(log_plus_n = log(weighted_n+1))
+
+# trying log transformation with gaussian
+funct_n <- glm(data = cwm_functional, log_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_n)
+funct_n <- glm(data = cwm_functional, log_n ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+
+simulateResiduals(funct_n, plot= T) # looks ok
+shapiro.test(residuals(funct_n)) # not normal
+
+# trying log(n+1) transformation with gaussian
+funct_n <- glm(data = cwm_functional, log_plus_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_n)
+funct_n <- glm(data = cwm_functional, log_plus_n ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+
+simulateResiduals(funct_n, plot= T) # looks ok
+shapiro.test(residuals(funct_n)) # normal
+
+emmeans(funct_n, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_n, pairwise ~ treatment | functional_group)
+emmeans(funct_n, pairwise ~ functional_group)
+
+```
+##### seed mass
+```{r}
+funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_seed_mass)
+funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+
+simulateResiduals(funct_seed_mass, plot= T) # bad
+shapiro.test(residuals(funct_seed_mass)) # not normal
+
+cwm_functional <- cwm_functional %>% 
+  mutate(log_seed_mass = log(weighted_seed_mass))
+
+# log transformation with gaussian
+funct_seed_mass <- glm(data = cwm_functional, log_seed_mass ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+dredge(funct_seed_mass)
+funct_seed_mass <- glm(data = cwm_functional,log_seed_mass ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+
+simulateResiduals(funct_seed_mass, plot= T) # ok
+shapiro.test(residuals(funct_seed_mass)) # normal
+
+emmeans(funct_seed_mass, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_seed_mass, pairwise ~ treatment | functional_group)
+emmeans(funct_seed_mass, pairwise ~ functional_group)
+
 ```
 
+
+#### Individual Models:
+#### a. grasses:
+##### i. leaf area
+```{r}
+grass_la <- glm(data = grass, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_la) # best model: trait ~ climate * treatment
+
+simulateResiduals(grass_la, plot= T) #good
+shapiro.test(residuals(grass_la)) #normal
+
+summary(grass_la)
+emmeans(grass_la, pairwise ~ climate)
+emmeans(grass_la, pairwise ~ treatment | climate)
+```
+##### ii. specific leaf area
+```{r}
+grass_sla <- glm(data = grass, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_sla) # best model: trait ~ climate * treatment
+
+simulateResiduals(grass_sla, plot= T) # good
+shapiro.test(residuals(grass_sla)) # normal
+
+summary(grass_sla)
+emmeans(grass_sla, pairwise ~ climate)
+emmeans(grass_sla, pairwise ~ treatment | climate)
+```
+##### iii.ldmc
+```{r}
+grass_ldmc <- glm(data = grass, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_ldmc) # best model: trait ~ climate + treatment
+grass_ldmc <- glm(data = grass, weighted_ldmc ~ climate + treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_ldmc, plot= T) # not good
+shapiro.test(residuals(grass_ldmc)) # not normal
+
+grass <- grass %>% 
+  mutate(log_ldmc = log(weighted_ldmc))
+
+grass_ldmc <- glm(data = grass, log_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_ldmc) # best model: trait ~ climate
+grass_ldmc <- glm(data = grass, log_ldmc ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_ldmc, plot= T) # good
+shapiro.test(residuals(grass_ldmc)) # normal
+
+summary(grass_ldmc)
+emmeans(grass_ldmc, pairwise ~ climate)
+```
+##### iv. lnc
+```{r}
+grass_n <- glm(data = grass, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_n) # best model: trait ~ climate
+grass_n <- glm(data = grass, weighted_n ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_n, plot= T) # good
+shapiro.test(residuals(grass_n)) # normal
+
+summary(grass_n)
+emmeans(grass_n, pairwise ~ climate)
+```
+##### v. seed mass
+```{r}
+grass_seed_mass <- glm(data = grass, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+boxcox(grass_seed_mass) # might be best to do ln transformation
+dredge(grass_seed_mass) # best model: trait ~ climate + treatment
+grass_seed_mass <- glm(data = grass, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_seed_mass, plot= T) # not good
+shapiro.test(residuals(grass_seed_mass)) # normal
+
+grass <- grass %>% 
+  mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
+  mutate(ln_seed_mass = log10(weighted_seed_mass)) %>% 
+  mutate(sqrt_seed_mass = sqrt(weighted_seed_mass))
+
+grass_seed_mass <- glm(data = grass, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_seed_mass) # best model: trait ~ climate
+grass_seed_mass <- glm(data = grass, log_seed_mass ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_seed_mass, plot= T) # ok?
+shapiro.test(residuals(grass_seed_mass)) # not normal
+
+grass_seed_mass <- glm(data = grass, ln_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_seed_mass) # best model: trait ~ climate
+grass_seed_mass <- glm(data = grass, ln_seed_mass ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_seed_mass, plot= T) # ok?
+shapiro.test(residuals(grass_seed_mass)) # not normal
+
+grass_seed_mass <- glm(data = grass, sqrt_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(grass_seed_mass) # best model: trait ~ climate + treatment
+grass_seed_mass <- glm(data = grass, sqrt_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_seed_mass, plot= T) # not ok
+shapiro.test(residuals(grass_seed_mass)) # normal
+
+# gamma distribution worked all along
+grass_seed_mass <- glm(data = grass, weighted_seed_mass ~ climate * treatment, family = Gamma, na.action = na.fail)
+dredge(grass_seed_mass) # best model: trait ~ climate + treatment
+grass_seed_mass <- glm(data = grass, weighted_seed_mass ~ climate + treatment, family = Gamma, na.action = na.fail)
+
+simulateResiduals(grass_seed_mass, plot= T) # good
+shapiro.test(residuals(grass_seed_mass)) # normal
+
+summary(grass_seed_mass)
+emmeans(grass_seed_mass, pairwise ~ climate)
+emmeans(grass_seed_mass, pairwise ~ treatment | climate)
+```
 #### b. forbs
-
+##### i. la
 ```{r}
-forb_glm <- glm(data = forb, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(forb_glm) # NEED TO DO MODEL AVERAGING
-forb_glm <- glm(data = forb, weighted_la ~ treatment, family = gaussian, na.action = na.fail)
+forb_la <- glm(data = forb, log_la ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_la) # best model is climate + treatment
+forb_la <- glm(data = forb, log_la ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(forb_glm, plot= T) #residuals vs. predicted not good
-shapiro.test(residuals(forb_glm)) #normal
+simulateResiduals(forb_la, plot= T) # ok
+shapiro.test(residuals(forb_la)) #normal
 
+summary(forb_la)
+emmeans(forb_la, pairwise ~ climate)
+emmeans(forb_la, pairwise ~ treatment | climate)
 ```
+##### ii. sla
+```{r}
+forb_sla <- glm(data = forb, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_sla) # best model is only climate
+forb_sla <- glm(data = forb, weighted_sla ~ climate, family = gaussian, na.action = na.fail)
 
+simulateResiduals(forb_sla, plot= T) # ok
+shapiro.test(residuals(forb_sla)) # not normal
 
+forb_sla <- glm(data = forb, weighted_sla ~ climate * treatment, family = Gamma, na.action = na.fail)
+dredge(forb_sla) # best model: trait ~ climate
+forb_sla <- glm(data = forb, weighted_sla ~ climate, family = Gamma, na.action = na.fail)
+
+simulateResiduals(forb_sla, plot= T) # ok
+shapiro.test(residuals(forb_sla)) # normal
+
+summary(forb_sla)
+emmeans(forb_sla, pairwise ~ climate)
+```
+##### iii. ldmc
+```{r}
+forb_ldmc <- glm(data = forb, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_ldmc) # best model: trait ~ treatment
+forb_ldmc <- glm(data = forb, weighted_ldmc ~ treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(forb_ldmc, plot= T) # ok
+shapiro.test(residuals(forb_ldmc)) # normal
+
+summary(forb_ldmc)
+emmeans(forb_ldmc, pairwise ~ treatment)
+```
+##### iv.lnc
+```{r}
+forb_leaf_n <- glm(data = forb, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_leaf_n) # best model: trait ~ climate
+forb_leaf_n <- glm(data = forb, weighted_n ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(forb_leaf_n, plot= T) # ok
+shapiro.test(residuals(forb_leaf_n)) # normal
+
+summary(forb_leaf_n)
+emmeans(forb_leaf_n, pairwise ~ climate)
+```
+##### v.seed mass
+```{r}
+forb_seed_mass <- glm(data = forb, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_seed_mass) # best model: trait ~ climate * treatment
+
+simulateResiduals(forb_seed_mass, plot= T) # not good
+shapiro.test(residuals(forb_seed_mass)) # not normal
+
+forb_seed_mass <- glm(data = forb, weighted_seed_mass ~ climate * treatment, family = Gamma, na.action = na.fail)
+dredge(forb_seed_mass) # best model: trait ~ climate * treatment
+
+simulateResiduals(forb_seed_mass, plot= T) # ok
+shapiro.test(residuals(forb_seed_mass)) # not normal
+
+forb <- forb %>% 
+  mutate(log_seed_mass = log(weighted_seed_mass))
+
+forb_seed_mass <- glm(data = forb, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(forb_seed_mass) # best model: trait ~ climate
+forb_seed_mass <- glm(data = forb, log_seed_mass ~ climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(forb_seed_mass, plot= T) # ok
+shapiro.test(residuals(forb_seed_mass)) # normal
+
+summary(forb_seed_mass)
+emmeans(forb_seed_mass, pairwise ~ climate)
+```
 #### c. shrubs
-
+##### i.la
+- what do you do when residuals are normal but the residual vs. predicted plot looks terrible?
 ```{r}
-shrub_glm <- glm(data = shrub, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(shrub_glm) # best model: trait ~ climate
-shrub_glm  <- glm(data = shrub, weighted_la ~ climate, family = gaussian, na.action = na.fail)
+shrub_la <- glm(data = shrub, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_la) # best model: trait ~ climate + treatment
+shrub_la  <- glm(data = shrub, weighted_la ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(shrub_glm, plot= T) # can't do predicted plot
-shapiro.test(residuals(shrub_glm)) #normal
+simulateResiduals(shrub_la, plot= T) # very bad
+shapiro.test(residuals(shrub_la)) # normal
+
+summary(shrub_la)
+emmeans(shrub_la, pairwise ~ climate)
+```
+##### ii.sla
+```{r}
+shrub_sla <- glm(data = shrub, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_sla) # best model: trait ~ 1
+shrub_sla  <- glm(data = shrub, weighted_sla ~ 1, family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_sla, plot= T) # fine
+shapiro.test(residuals(shrub_sla)) # normal
 
 ```
+##### iii.ldmc
+```{r}
+shrub_ldmc <- glm(data = shrub, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_ldmc) # best model: trait ~ treatment; NEED TO DO MODEL AVERAGING
+shrub_ldmc  <- glm(data = shrub, weighted_ldmc ~ treatment, family = gaussian, na.action = na.fail)
 
+simulateResiduals(shrub_ldmc, plot= T) # fine
+shapiro.test(residuals(shrub_ldmc)) # normal
+
+summary(shrub_ldmc)
+emmeans(shrub_ldmc, pairwise ~ treatment)
+```
+##### iv.lnc
+```{r}
+shrub_n <- glm(data = shrub, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_n) # NEED TO DO MODEL AVERAGING
+shrub_n  <- glm(data = shrub, weighted_n ~ treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_n, plot= T) # fine
+shapiro.test(residuals(shrub_n)) # normal
+
+summary(shrub_n)
+emmeans(shrub_n, pairwise ~ treatment)
+```
+##### v.seed mass
+```{r}
+shrub_seed_mass <- glm(data = shrub, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+dredge(shrub_seed_mass) # NEED TO DO MODEL AVERAGING
+shrub_seed_mass  <- glm(data = shrub, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_seed_mass, plot= T) # bad
+shapiro.test(residuals(shrub_seed_mass)) # normal
+
+summary(shrub_n)
+emmeans(shrub_n, pairwise ~ treatment)
+
+```
