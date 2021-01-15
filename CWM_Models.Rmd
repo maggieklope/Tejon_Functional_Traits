@@ -869,10 +869,10 @@ funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate + fun
 simulateResiduals(funct_seed_mass, plot= T) # bad
 shapiro.test(residuals(funct_seed_mass)) # not normal
 
+# log transformation with gaussian
 cwm_functional <- cwm_functional %>% 
   mutate(log_seed_mass = log(weighted_seed_mass))
 
-# log transformation with gaussian
 funct_seed_mass <- glm(data = cwm_functional, log_seed_mass ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
 dredge(funct_seed_mass)
 funct_seed_mass <- glm(data = cwm_functional,log_seed_mass ~ climate + functional_group + climate:functional_group, na.action = na.fail)
@@ -880,13 +880,23 @@ funct_seed_mass <- glm(data = cwm_functional,log_seed_mass ~ climate + functiona
 simulateResiduals(funct_seed_mass, plot= T) # ok
 shapiro.test(residuals(funct_seed_mass)) # normal
 
-emmeans(funct_seed_mass, pairwise ~ climate | treatment | functional_group)
-emmeans(funct_seed_mass, pairwise ~ treatment | functional_group)
+# for back transformation
+funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+
+funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate * functional_group)
+summary(funct_seed_mass_emm) # results are given on a log scale
+summary(funct_seed_mass_emm, infer = TRUE, null = log(35), type = "response")
+
+funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = make.tran("genlog", 1))
+
+contrast(regrid(funct_seed_mass.rg))
+
+emmeans(funct_seed_mass.rg, pairwise ~ climate | functional_group)
+emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
+emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
 emmeans(funct_seed_mass, pairwise ~ functional_group)
 
 ```
-
-
 #### Individual Models:
 #### a. grasses:
 ##### i. leaf area
