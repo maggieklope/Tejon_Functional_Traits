@@ -20,6 +20,7 @@ library(gt)
 library(tibble)
 library(lsmeans)
 library(gridExtra)
+library(multcomp)
 
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
 
@@ -53,15 +54,19 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 `lm(LA ~ Climate * Treatment, family = gaussian)`
 
-```{r}
-cwm_traits_adj %>%
+```{r, include=FALSE}
+cwm_bar_data <- cwm_traits_adj %>%
   pivot_longer(cols = weighted_la:weighted_n,
                names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
+               values_to = "value")
+
+ggplot(cwm_bar_data, aes(x = climate, y = value)) +
+  geom_boxplot(aes(fill = treatment)) +
   theme_bw() +
-  facet_wrap(~traits, scales = "free")
+  facet_wrap(~traits, scales = "free", nrow = 3) +
+  scale_fill_manual(values = c("#ffffff", "#d9d9d9", "#969696"))
+
+  # scale_fill_manual(values = c("#fec44f", "#ffeda0", "#969696"))
 
 # ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 5, height = 10)
 
@@ -141,12 +146,28 @@ emmeans(LA_CWM, pairwise ~ treatment)
 emmeans(LA_CWM, pairwise ~ climate | treatment)
 emmeans(LA_CWM, pairwise ~ treatment | climate)
 
-# visualization
+test <- emmeans(LA_CWM, pairwise ~ climate | treatment)
+emmeans::contrast(test)
 
-test <- emmeans(LA_CWM, ~ climate | treatment)
-pwpp(test) # difficult to interpret
+View(as.data.frame(test$emmeans))
+View(as.data.frame(test$contrasts))
 
-plot(emmeans(LA_CWM, ~ climate * treatment))
+#visualization
+plot(emmeans(LA_CWM, ~ climate | treatment), comparisons = TRUE)
+
+# data <- as.data.frame(test$emmeans) %>%
+#   mutate(upper_limit = emmean +  SE) %>%
+#   mutate(lower_limit = emmean -  SE)
+# 
+# ggplot(data, aes(x = climate, y = emmean)) +
+#   geom_point()+
+#   facet_wrap(data$treatment)+
+# # geom_ribbon(aes(ymin = data$lower_limit, ymax = data$upper_limit), linetype=2, alpha=0.1)
+# # geom_errorbar(aes(ymin = data$lower_limit, ymax = data$upper_limit)
+#   geom_pointrange(aes(ymin = data$lower_limit, ymax = data$upper_limit))
+#   
+
+# plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
 
 plot(emmeans(LA_CWM, ~ climate | treatment), 
      type = "response", 
@@ -155,37 +176,16 @@ plot(emmeans(LA_CWM, ~ climate | treatment),
   # this is a ggplot so you can customize as normal
   theme_bw() +   
   labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
-  
-# pair-wise comparisons
-plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
 
-# compact letter displays
-# multcomp::cld(pairs(emmeans(LA_CWM, ~ climate | treatment)))
-
-test <- emmeans(LA_CWM, pairwise ~ climate | treatment)
-
-data <- as.data.frame(test$contrasts) %>%
+test_2 <- as.data.frame(pairs(emmeans(LA_CWM, ~ climate * treatment))) %>%
+  separate(contrast, c("A", "B"), sep = " - ") %>%
+  # select(A, B, estimate, p.value) %>%
+  mutate(A = str_replace_all(A, "," , "-")) %>%
+  mutate(B = str_replace_all(B, "," , "-")) %>%
   mutate(upper_limit = estimate +  SE) %>%
   mutate(lower_limit = estimate -  SE)
 
-# emmeans::contrast(test)
-
-# test <- as.data.frame(pairs(emmeans(FRic, ~ climate * treatment))) %>% 
-#   separate(contrast, c("A", "B"), sep = " - ") %>%
-#   # select(A, B, estimate, p.value) %>% 
-#   mutate(A = str_replace_all(A, "," , "-")) %>% 
-#   mutate(B = str_replace_all(B, "," , "-")) %>% 
-#   mutate(upper_limit = estimate +  SE) %>% 
-#   mutate(lower_limit = estimate -  SE)
-
-ggplot(data, aes(x = contrast, y = estimate)) +
-  geom_boxplot() +
-  facet_wrap(data$treatment) +
-  # geom_ribbon(aes(ymin = data$lower_limit, ymax = data$upper_limit), linetype=2, alpha=0.1)
-  geom_errorbar(aes(ymin = data$lower_limit, ymax = data$upper_limit))
-  
 # trying to set own colors
-
 arrow_colors <- function(climates){
   if (climates == "Arid") return({"red"})
   if (climates == "Intermediate") return({"orange"})
@@ -198,19 +198,20 @@ arrow_colors <- function(input){
   if (input == "Total") return({"blue"})
 }
 
-as.data.frame(test)
-
 plot(test, 
      type = "response",
      CI = FALSE,
      comparisons = TRUE, # If arrows overlap, they are not statistically significant
-     colors = c("black", "black", "blue", arrow_colors(climate))) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+     colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
   # this is a ggplot so you can customize as normal
   theme_bw() +   
   labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
 
-```
+#Compact Letter Display
+la_emm <- emmeans(LA_CWM, ~ climate)
+la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
 
+```
 
 
 ```{r}
@@ -502,7 +503,7 @@ gtsave(data = pretty_table, filename = "CWM_AIC_table.png", path = "~/github/Tej
 
 ```
 
-#### g. EMM Graphs
+e#### g. EMM Graphs
 
 ```{r}
 
