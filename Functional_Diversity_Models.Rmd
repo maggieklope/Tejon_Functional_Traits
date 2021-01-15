@@ -18,7 +18,10 @@ library(MuMIn) #model summaries and comparisons
 library(emmeans) #post-hoc analyses
 # library(performance) #for R2 values
 library(gt)
+library(knitr)
 ```
+
+### Calculations
 
 ```{r tidy data, include=FALSE}
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
@@ -55,29 +58,29 @@ mesic_total_abund <- fd_abund("Mesic", "Total")
 
 # trait data in correct format:
 
-fd_traits <- function(Climate, Treatment, fd_abund_data){
+fd_traits <- function(Climate, Treatment){
   for_FD %>% 
-    ungroup(climate, treatment) %>% 
+    # ungroup(climate, treatment) %>% 
     filter(climate == Climate) %>% 
     filter(treatment == Treatment) %>% 
-    select(species_name, leaf_area, sla, ldmc) %>% 
+    dplyr::select(species_name, leaf_area, sla, ldmc) %>%
     distinct() %>% 
     arrange(species_name) %>% 
     column_to_rownames(var = "species_name") 
   
 }
 
-arid_open_trait <- fd_traits("Arid", "Open", arid_open_abund)
-arid_partial_trait <- fd_traits("Arid", "Partial", arid_partial_abund)
-arid_total_trait <- fd_traits("Arid", "Total", arid_total_abund)
+arid_open_trait <- fd_traits("Arid", "Open")
+arid_partial_trait <- fd_traits("Arid", "Partial")
+arid_total_trait <- fd_traits("Arid", "Total")
 
-int_open_trait <- fd_traits("Intermediate", "Open", int_open_abund)
-int_partial_trait <- fd_traits("Intermediate", "Partial", int_partial_abund)
-int_total_trait <- fd_traits("Intermediate", "Total", int_total_abund)
+int_open_trait <- fd_traits("Intermediate", "Open")
+int_partial_trait <- fd_traits("Intermediate", "Partial")
+int_total_trait <- fd_traits("Intermediate", "Total")
 
-mesic_open_trait <- fd_traits("Mesic", "Open", mesic_open_abund)
-mesic_partial_trait <- fd_traits("Mesic", "Partial", mesic_partial_abund)
-mesic_total_trait <- fd_traits("Mesic", "Total", mesic_total_abund)
+mesic_open_trait <- fd_traits("Mesic", "Open")
+mesic_partial_trait <- fd_traits("Mesic", "Partial")
+mesic_total_trait <- fd_traits("Mesic", "Total")
 
 ```
 
@@ -207,6 +210,64 @@ FD_all %>%
   facet_wrap(~FD, scales = "free")
 
 # ggsave("Functional_Diversity_Barchart.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+```
+
+### Graphs
+
+```{r}
+
+# opts_knit$set(root.dir = "~/github/Tejon_Functional_Traits/Villeger_code/functions")
+
+#loading Villeger functions
+# setwd("~/github/Tejon_Functional_Traits/Villeger_code/functions") # folder where R functions have been saved
+
+source("quality_funct_space.R")
+source("plot_funct_space.R")
+source("multidimFD.R")
+source("multidimFbetaD.R")
+
+```
+
+```{r,}
+# opts_knit$set(root.dir = "~/github/Tejon_Functional_Traits/Figures/FD")
+
+# make sure data is in correct format
+sum(row.names(arid_open_trait) %in% colnames(arid_open_abund)) == ncol(arid_open_abund) #TRUE
+
+# first, use quality_funct_space(traits df, plot = "name")
+qual_funct_space <- quality_funct_space(arid_open_trait, 
+                                        plot = "arid_open_qual_funct_space")
+
+qual_funct_space <- quality_funct_space(as.matrix(arid_open_trait), 
+                                        traits_weights = NULL, 
+                                        nbdim = 6, 
+                                        metric = "Gower",
+                                        dendro = TRUE, 
+                                        plot = "arid_open_qual_funct_space")
+
+qual_funct_space$meanSD
+# best value is the smallest, so in this case 3D
+
+arid_open_coord_3D <- qual_funct_space$details_funct_space$mat_coord[ ,1:3]
+arid_open_coord_3D
+
+FD_test <- multidimFD(arid_open_coord_3D, 
+                         arid_open_abund, 
+                         check_species_pool = TRUE, 
+                         verb = TRUE,
+                         nm_asb_plot = row.names(arid_open_abund), 
+                         folder_plot = "~/github/Tejon_Functional_Traits/Figures/FD",
+                         Faxes_plot = colnames(arid_open_coord_3D)[1:3], 
+                         Faxes_nm_plot = colnames(arid_open_coord_3D)[1:3],
+                         plot_pool = TRUE, 
+                         col_bg = "grey90", 
+                         col_sp_pool = "grey30",  
+                         pch_sp_pool = "+", 
+                         cex_sp_pool = 1, 
+                         pch_sp = 21, 
+                         col_sp = "#1E90FF", 
+                         transp = 50)
 
 ```
 
