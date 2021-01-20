@@ -518,4 +518,131 @@ pretty_table
 # gtsave(data = pretty_table, filename = "FD_Best_Fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
+#### EMM Graphs
+```{r}
+# color of arrows
+arrow_colors <- (rep(c("red", "orange", "blue"), 3))
+
+# significance caption
+symbol <- "\u2264"
+caption <- paste0(symbol, "0.05(*), ", symbol, "0.01()**, ", symbol, "0.001(***)")
+
+emm_plot <- function(emmeans) {
+  plot(emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+  # facet_grid by climate, and remove empty values
+  # facet_grid(. ~climate, scales = "free", space = "free") +
+  labs(y = "EMM", x = "Climate") +
+  aes(fill = as.factor(treatment)) +
+  # changing color of comparison arrow lines
+  geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+  # changing color of point
+  geom_point(aes_(fill = "black")) +
+  # changing theme
+  theme_bw() +
+  # removing legend
+  theme(legend.position = "none") +
+  # changing x labels within facet_grid
+  scale_x_discrete(labels = c("Open", "Partial", "Total", "Open", "Partial", "Total", "Open", "Partial", "Total")) +
+  # transparent background
+  theme(panel.background = element_rect(fill = "transparent"), plot.background = element_rect(fill = "transparent", color = NA)) +
+  # adding footnote
+  labs(caption = caption)
+}
+
+# FRic
+FRic_emmeans <- emmeans(FRic, ~ treatment | climate)
+# emmeans(FRic, pairwise ~ treatment | climate)
+FRic_plot <- emm_plot(FRic_emmeans) +
+  labs(title = "Functional Richness") +
+  # Arid-Open - Arid-Partial
+  geom_signif(annotation = "***",
+    y_position = 7.25, xmin = 1, xmax = 2,
+    tip_length = c(.7, .025)) +
+  # Arid-Partial - Arid-Total
+  geom_signif(annotation = "**",
+    y_position = 7.75, xmin = 2, xmax = 3,
+    tip_length = c(.05, .5)) +
+  # Mesic-Open - Mesic-Partial
+   geom_signif(annotation = "*",
+    y_position = 7.2, xmin = 7, xmax = 8,
+    tip_length = c(.05, .3)) +
+    # Mesic-Open - Mesic-Total
+   geom_signif(annotation = "**",
+    y_position = 5, xmin = 8, xmax = 9,
+    tip_length = c(.05, .2))
+
+ggsave("FRic_emmean.png", plot = FRic_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+# FDiv
+FDiv_emmeans <- emmeans(FDiv, ~ treatment | climate)
+# emmeans(FDiv, pairwise ~ treatment | climate)
+FDiv_plot <- emm_plot(FDiv_emmeans) +
+  labs(title = "Functional Divergence") +
+  # Arid-Open - Arid-Partial
+  geom_signif(annotation = "***",
+    y_position = .8, xmin = 1, xmax = 2,
+    tip_length = c(.05, .5)) +
+  # Arid-Open - Arid-Total
+  geom_signif(annotation = "*",
+    y_position = 1.05, xmin = 1, xmax = 3,
+    tip_length = c(.4, .1)) +
+  # Arid-Partial - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = .95, xmin = 2, xmax = 3,
+    tip_length = c(.05, .05)) +
+  # Int all
+  geom_signif(annotation = "***",
+    y_position = .8, xmin = 4, xmax = 5,
+    tip_length = c(.05, .5)) +
+  geom_signif(annotation = "***",
+    y_position = .95, xmin = 5, xmax = 6,
+    tip_length = c(.05, .05)) +
+  geom_signif(annotation = "***",
+    y_position = 1.05, xmin = 4, xmax = 6,
+    tip_length = c(.4, .1)) +
+  # Mesic-Partial - Mesic-Total
+  geom_signif(annotation = "*",
+    y_position = .9, xmin = 8, xmax = 9,
+    tip_length = c(.3, .05))
+
+ggsave("FDiv_emmean.png", plot = FDiv_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+# FDis
+FDis_emmeans <- emmeans(FDis, ~ treatment | climate)
+# emmeans(FDis, pairwise ~ treatment | climate)
+FDis_plot <- emm_plot(FDis_emmeans) +
+  labs(title = "Functional Dispersion") +
+  # Arid-Open - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = 1.5, xmin = 1, xmax = 3,
+    tip_length = c(.5, .05)) +
+    # Arid-Partial - Arid-Total
+  geom_signif(annotation = "**",
+    y_position = 1.4, xmin = 2, xmax = 3,
+    tip_length = c(.3, .05)) +
+  # Int-Open - Int-Total
+   geom_signif(annotation = "***",
+    y_position = 1.9, xmin = 4, xmax = 6,
+    tip_length = c(.85, .05)) +
+  # Int-Partial - Int-Total
+   geom_signif(annotation = "***",
+    y_position = 1.8, xmin = 5, xmax = 6,
+    tip_length = c(.8, .05)) +
+  # Mesic-Open - Mesic-Partial
+  geom_signif(annotation = "**",
+    y_position = 1.7, xmin = 7, xmax = 8,
+    tip_length = c(.05, .3)) +
+  # Mesic-Open - Mesic-Total
+  geom_signif(annotation = "*",
+    y_position = 1.8, xmin = 7, xmax = 9,
+    tip_length = c(.05, .35))
+
+ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+```
 
