@@ -421,23 +421,23 @@ dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
 
 dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Specific Leaf Area") %>%
-  select(CWM, climate, treatment, "climate:treatment")
+  mutate(CWM = "Specific Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment")
 
 dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Dry Matter Content") %>%
-  select(CWM, climate, treatment)
+  dplyr::select(CWM, climate, treatment)
 
 dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Seed Mass (log)") %>%
-  select(CWM, climate, treatment)
+  dplyr::select(CWM, climate, treatment)
 
 dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Nitrogen Content (log)") %>%
-  select(CWM, climate, treatment)
+  dplyr::select(CWM, climate, treatment)
 
 dredge_table <- dredge_LA %>% 
   full_join(dredge_SLA) %>% 
@@ -471,7 +471,7 @@ pretty_table <- dredge_table %>%
 
 # pretty_table
 
-gtsave(data = pretty_table, filename = "CWM_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# gtsave(data = pretty_table, filename = "CWM_Best_Fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
