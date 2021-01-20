@@ -463,56 +463,59 @@ emmeans(RaoQ, pairwise ~ climate * treatment)
 
 ```{r}
 
-dredge_FRic <- dredge(FRic) %>%
+dredge_FRic <- as.data.frame(dredge(FRic)) %>%
   filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "FRic") %>%
-  select(CWM, climate, treatment, "climate:treatment", AICc)
+  mutate(CWM = "FRic") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment")
 
-dredge_FEve <- dredge(FEve) %>%
+dredge_FEve <- as.data.frame(dredge(FEve)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "FEve") %>%
-  select(CWM, AICc)
+  dplyr::select(CWM)
 
-dredge_FDiv <- dredge(FDiv) %>%
+dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "FDiv") %>%
-  select(CWM, climate, treatment, "climate:treatment", AICc)
+  dplyr::select(CWM, climate, treatment, "climate:treatment")
 
-dredge_FDis <- dredge(FDis) %>%
+dredge_FDis <- as.data.frame(dredge(FDis)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "FDis") %>%
-  select(CWM, climate, treatment, "climate:treatment", AICc)
+  dplyr::select(CWM, climate, treatment, "climate:treatment")
 
 dredge_table <- dredge_FRic %>% 
   full_join(dredge_FEve) %>% 
   full_join(dredge_FDiv) %>% 
-  full_join(dredge_FDis)
+  full_join(dredge_FDis) %>% 
+  mutate(climate = str_replace(climate, "\\+","x")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
 
 pretty_table <- dredge_table %>% 
   as_tibble() %>% 
   gt() %>% 
   tab_header(
-    title = "FD Best-Fit Models & AIC Values"
+    title = "FD Best-Fit Models"
   ) %>% 
   tab_spanner(
     label = "Fixed Effects Terms",
     columns = vars(climate, treatment, "climate:treatment")
   ) %>% 
-  fmt_number(
-    columns = vars(AICc),
-    decimals = 2
-  ) %>% 
+  # fmt_number(
+  #   columns = vars(AICc),
+  #   decimals = 2
+  # ) %>% 
   fmt_missing(
     columns = vars(climate, treatment, "climate:treatment"),
     missing_text = " "
   ) %>% 
   tab_source_note(
-    source_note = "+ indicates selection of fixed effect term for best-fit model"
+    source_note = "x indicates selection of fixed effect term for best-fit model"
   )
 
-# pretty_table
+pretty_table
 
-# gtsave(data = pretty_table, filename = "FD_AIC_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# gtsave(data = pretty_table, filename = "FD_Best_Fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
