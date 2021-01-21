@@ -381,7 +381,46 @@ pretty_table <- dredge_table %>%
 
 gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 ```
+##### EMM Graphs
+```{r}
+# color of arrows
+arrow_colors <- (rep(c("red", "orange", "blue"), 9))
+# arrow_colors <- (rep(c("red", "red", "red", "orange", "orange", "orange", "blue", "blue", "blue"), 3))
 
+# Leaf Area
+la_emmeans <- emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
+
+# emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
+
+funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+  facet_grid(. ~ climate + functional_group, scales = "free", space = "free") +
+  aes(fill = as.factor(treatment)) +
+   geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color ="black") +
+  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = "black") +
+  geom_point(aes_(fill = "black")) +
+  # theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  scale_x_discrete(labels = rep(c("Open", "Partial", "Total"), 9)) +
+  labs(title = "Leaf Area CWM by Functional Group") +
+    theme(legend.position = "none")
+
+funct_la_plot
+
+ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
+
+
+```
+#### using sjPlot
+```{r}
+library(sjPlot)
+
+plot_model(funct_la, type = "emm", terms = c("climate", "treatment", "functional_group"))
+
+plot_model(funct_sla, type = "emm", terms = c("climate", "treatment", "functional_group"))
+```
 #### Individual Models:
 #### a. grasses:
 ##### i. leaf area
