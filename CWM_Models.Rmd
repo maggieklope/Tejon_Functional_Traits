@@ -246,15 +246,7 @@ summary(LA_aov)
 tukey_LA <- TukeyHSD(LA_aov)
 TukeyHSD(LA_aov)
 
-# making a plot
 
-plot(tukey_LA, ~ climate | treatment)
-
-climate <- as.data.frame(tukey_LA$climate) %>% 
-  rownames_to_column()
-
-ggplot(climate, aes(x = rowname, y = diff)) + 
-  geom_boxplot()
 
 ```
 
@@ -542,6 +534,13 @@ LNC_sig_pairs <- LNC_pairs %>%
 
 # emmeans(log_n_CWM, pairwise ~ climate + treatment)
 emmeans(log_n_CWM, pairwise ~ climate | treatment)
+
+log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate | treatment))) %>% 
+  dplyr::select(contrasts.contrast, contrasts.treatment, contrasts.estimate, contrasts.p.value) %>% 
+  mutate(significance = ifelse(contrasts.p.value < 0.05, "*", " ")) %>% 
+  rename(Climates = "contrasts.contrast", Treatment = contrasts.treatment, Estimate = contrasts.estimate, "p-value" = contrasts.p.value)
+
+write.csv(log_n_contrasts, file = "~/github/Tejon_Functional_Traits/Datasheets/log_n_contrasts.", row.names = FALSE)
 
 plot(emmeans(log_n_CWM, pairwise ~ treatment | climate))
 multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
