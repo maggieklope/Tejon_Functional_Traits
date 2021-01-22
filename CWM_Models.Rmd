@@ -104,18 +104,11 @@ shapiro.test(residuals(LA_CWM)) #normal
 # pairwise comparisons
 emmeans(LA_CWM, pairwise ~ climate)
 emmeans(LA_CWM, pairwise ~ treatment)
-# emmeans(LA_CWM, pairwise ~ climate * treatment)
-emmeans(LA_CWM, pairwise ~ climate | treatment)
-emmeans(LA_CWM, pairwise ~ treatment | climate)
+emmeans(LA_CWM, pairwise ~ climate * treatment)
 
-test <- emmeans(LA_CWM, pairwise ~ climate | treatment)
-emmeans::contrast(test)
-
-View(as.data.frame(test$emmeans))
-View(as.data.frame(test$contrasts))
 
 #visualization
-plot(emmeans(LA_CWM, ~ climate | treatment), comparisons = TRUE)
+plot(emmeans(LA_CWM, ~ climate * treatment), comparisons = TRUE)
 
 # data <- as.data.frame(test$emmeans) %>%
 #   mutate(upper_limit = emmean +  SE) %>%
@@ -131,38 +124,8 @@ plot(emmeans(LA_CWM, ~ climate | treatment), comparisons = TRUE)
 
 # plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
 
-plot(emmeans(LA_CWM, ~ climate | treatment), 
+plot(emmeans(LA_CWM, ~ climate * treatment), 
      type = "response", 
-     comparisons = TRUE, # If arrows overlap, they are not statistically significant
-     colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-  # this is a ggplot so you can customize as normal
-  theme_bw() +   
-  labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
-
-test_2 <- as.data.frame(pairs(emmeans(LA_CWM, ~ climate * treatment))) %>%
-  separate(contrast, c("A", "B"), sep = " - ") %>%
-  # select(A, B, estimate, p.value) %>%
-  mutate(A = str_replace_all(A, "," , "-")) %>%
-  mutate(B = str_replace_all(B, "," , "-")) %>%
-  mutate(upper_limit = estimate +  SE) %>%
-  mutate(lower_limit = estimate -  SE)
-
-# trying to set own colors
-# arrow_colors <- function(climates){
-#   if (climates == "Arid") return({"red"})
-#   if (climates == "Intermediate") return({"orange"})
-#   if (climates == "Mesic") return({"blue"})
-# }
-# 
-# arrow_colors <- function(input){
-#   if (input == "Open") return({"red"})
-#   if (input == "Partial") return({"orange"})
-#   if (input == "Total") return({"blue"})
-# }
-
-plot(test, 
-     type = "response",
-     CI = FALSE,
      comparisons = TRUE, # If arrows overlap, they are not statistically significant
      colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
   # this is a ggplot so you can customize as normal
@@ -186,7 +149,7 @@ caption <- paste0(symbol, "0.05(*), ", symbol, "0.01()**, ", symbol, "0.001(***)
 #function
 emm_plot <- function(emmeans) {
   plot(emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
-  # facet_grid by climate, and remove empty values
+  # # facet_grid by climate, and remove empty values
   # facet_grid(. ~climate, scales = "free", space = "free") +
   labs(y = "EMM", x = "Climate") +
   aes(fill = as.factor(treatment)) +
@@ -211,23 +174,26 @@ emm_plot <- function(emmeans) {
   labs(caption = caption)
 }
 
-la_emmeans <- emmeans(LA_CWM, ~ treatment | climate)
+la_emmeans <- emmeans(LA_CWM, ~ treatment * climate)
+
+as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
 plot1 <- emm_plot(la_emmeans)+
   # adding title
   labs(title = "Leaf Area CWM") +
+  
   # adding significance of comparisons
-  # Arid-Partial - Arid-Total
-  geom_signif(annotation = "***",
-    y_position = 85, xmin = 2, xmax = 3,
-    tip_length = c(.5, .05)) +
-  # Arid-Open - Arid-Total
+   # Arid-Open - Arid-Total
   geom_signif(annotation = "***",
     y_position = 90, xmin = 1, xmax = 3,
     tip_length = c(.75, .05)) +
-  # Mesic-Open - Mesic-Total
-   geom_signif(annotation = "*",
-    y_position = 50, xmin = 7, xmax = 9,
-    tip_length = c(.05, .3))
+  
+  # Arid-Partial - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = 85, xmin = 2, xmax = 3,
+    tip_length = c(.5, .05))
+
 
 plot1
 
@@ -245,8 +211,6 @@ shapiro.test(residuals(LA_aov))
 summary(LA_aov)
 tukey_LA <- TukeyHSD(LA_aov)
 TukeyHSD(LA_aov)
-
-
 
 ```
 
@@ -281,37 +245,36 @@ SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>%
 
 emmeans(SLA_CWM, pairwise ~ climate)
 emmeans(SLA_CWM, pairwise ~ treatment)
-# emmeans(SLA_CWM, pairwise ~ climate * treatment)
-emmeans(SLA_CWM, pairwise ~ treatment | climate)
+emmeans(SLA_CWM, pairwise ~ climate * treatment)
 
-plot(emmeans(SLA_CWM, pairwise ~ treatment | climate), comparisons = TRUE)
+
+plot(emmeans(SLA_CWM, pairwise ~ treatment * climate), comparisons = TRUE)
 
 sla_emm <- emmeans(SLA_CWM, ~ climate)
 multcomp::cld(sla_emm, alpha = 0.05, Letters = LETTERS)
 
-
 ```
 ##### i. EMM graph
 ```{r}
-sla_emmeans <- emmeans(SLA_CWM, ~ treatment | climate)
-# emmeans(SLA_CWM, pairwise ~ treatment | climate)
+sla_emmeans <- emmeans(SLA_CWM, ~ climate * treatment)
+
+as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
 
 plot2 <- emm_plot(sla_emmeans)+
   # adding title
   labs(title = "Specific Leaf Area CWM") +
+  
   # adding significance of comparisons
-  # Arid-Open - Arid-Partial
-  geom_signif(annotation = "*",
-    y_position = 3.25, xmin = 1, xmax = 2,
-    tip_length = c(.02, .4)) +
-  # Arid-Open - Arid-Total
+    # Arid-Open - Arid-Total
   geom_signif(annotation = "***",
-    y_position = 4.25, xmin = 1, xmax = 3,
-    tip_length = c(.3, .05)) +
-  # Arid-Partial - Arid-Total
+    y_position = 3.25, xmin = 1, xmax = 3,
+    tip_length = c(.1, .125)) +
+  
+    # Arid-Partial - Arid-Total
    geom_signif(annotation = "***",
-    y_position = 4.75, xmin = 2, xmax = 3,
-    tip_length = c(.05, .1))
+    y_position = 2.75, xmin = 2, xmax = 3,
+    tip_length = c(.05, .3))
 
 plot2
 
@@ -359,32 +322,18 @@ LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) 
 
 emmeans(LDMC_CWM, pairwise ~ climate)
 emmeans(LDMC_CWM, pairwise ~ treatment)
-# emmeans(LDMC_CWM, pairwise ~ climate + treatment)
-emmeans(LDMC_CWM, pairwise ~ climate | treatment)
+emmeans(LDMC_CWM, pairwise ~ climate + treatment)
 
-
-simulateResiduals(LDMC_CWM, plot= T) #looks good
-shapiro.test(residuals(LDMC_CWM)) #normal
-
-LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) %>% 
-  filter(p.value <= 0.05)
-
-emmeans(LDMC_CWM, pairwise ~ climate)
-emmeans(LDMC_CWM, pairwise ~ treatment)
-# emmeans(LDMC_CWM, pairwise ~ climate + treatment)
-emmeans(LDMC_CWM, pairwise ~ climate | treatment)
-emmeans(LDMC_CWM, pairwise ~ treatment | climate)
-emmeans(LDMC_CWM, pairwise ~ treatment * climate)
-
-plot(emmeans(LDMC_CWM, pairwise ~ treatment | climate), comparisons = TRUE)
-
+plot(emmeans(LDMC_CWM, pairwise ~ treatment + climate), comparisons = TRUE)
 multcomp::cld(emmeans(LDMC_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
 ##### i. EMM graph
 ```{r}
 ldmc_emmeans <- emmeans(LDMC_CWM, ~ treatment | climate)
-emmeans(LDMC_CWM, pairwise ~ treatment | climate)
+
+as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
 
 plot3 <- emm_plot(ldmc_emmeans) +
   # adding title
@@ -403,9 +352,20 @@ plot3 <- emm_plot(ldmc_emmeans) +
     y_position = 40, xmin = 8, xmax = 9,
     tip_length = c(.25, .05))
 
-# plot3
+plot3
 
 ggsave("LDMC_CWM_emmean.png", plot = plot3, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+ldmc_aov <- aov(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment)
+
+dredge(ldmc_aov)
+simulateResiduals(ldmc_aov, plot = T)
+shapiro.test(residuals(ldmc_aov))
+
+summary(ldmc_aov)
+tukey_LA <- TukeyHSD(ldmc_aov)
+TukeyHSD(ldmc_aov)
+
 ```
 #### d. Seed mass CWM
 
@@ -455,17 +415,18 @@ seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatm
 
 emmeans(log_seed_mass, pairwise ~ climate)
 emmeans(log_seed_mass, pairwise ~ treatment)
-# emmeans(log_seed_mass, pairwise ~ climate + treatment)
-emmeans(log_seed_mass, pairwise ~ treatment * climate)
+emmeans(log_seed_mass, pairwise ~ climate + treatment)
 
-plot(emmeans(log_seed_mass, pairwise ~ treatment | climate))
+plot(emmeans(log_seed_mass, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_seed_mass, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
 ##### i. EMM graph
 ```{r}
 seed_mass_emmeans <- emmeans(log_seed_mass, ~ treatment | climate)
-emmeans(log_seed_mass, pairwise ~ treatment | climate)
+
+as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
 
 plot4 <- emm_plot(seed_mass_emmeans) +
   # adding title
@@ -484,11 +445,10 @@ plot4 <- emm_plot(seed_mass_emmeans) +
     y_position = -.6, xmin = 7, xmax = 9,
     tip_length = c(.3, .05))
   
-# plot 4
+plot4
   
 ggsave("seed_mass_CWM_emmean.png", plot = plot4, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 ```
-#####
 #### e. Leaf-N CWM
 
 - No difference between any of the different herbivore treatments within climates
@@ -532,44 +492,33 @@ LNC_pairs <-  as.data.frame(pairs(emmeans(log_n_CWM, ~ climate + treatment)))
 LNC_sig_pairs <- LNC_pairs %>% 
   filter(p.value <= 0.05)
 
-# emmeans(log_n_CWM, pairwise ~ climate + treatment)
-emmeans(log_n_CWM, pairwise ~ climate | treatment)
+emmeans(log_n_CWM, pairwise ~ climate + treatment)
 
-log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate | treatment))) %>% 
+log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate  treatment))) %>% 
   dplyr::select(contrasts.contrast, contrasts.treatment, contrasts.estimate, contrasts.p.value) %>% 
   mutate(significance = ifelse(contrasts.p.value < 0.05, "*", " ")) %>% 
   rename(Climates = "contrasts.contrast", Treatment = contrasts.treatment, Estimate = contrasts.estimate, "p-value" = contrasts.p.value)
 
 write.csv(log_n_contrasts, file = "~/github/Tejon_Functional_Traits/Datasheets/log_n_contrasts.", row.names = FALSE)
 
-plot(emmeans(log_n_CWM, pairwise ~ treatment | climate))
+plot(emmeans(log_n_CWM, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
 ```
 ##### i. EMM graph
 ```{r}
 n_emmeans <- emmeans(log_n_CWM, ~ treatment | climate)
-emmeans(log_n_CWM, pairwise ~ treatment | climate)
 
-plot4 <- emm_plot(n_emmeans) +
+as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
+plot5 <- emm_plot(n_emmeans) +
   # adding title
-  labs(title = "Leaf Nitrogen Concentration (log) CWM") +
+  labs(title = "Leaf Nitrogen Concentration (log) CWM")
    # adding significance of comparisons
-  # Arid-Partial - Arid-Total
-  geom_signif(annotation = "*",
-    y_position = 1.15, xmin = 2, xmax = 3,
-    tip_length = c(.3, .025)) +
-  # Int-Partial - Int-Total
-  geom_signif(annotation = "*",
-    y_position = 1.25, xmin = 5, xmax = 6,
-    tip_length = c(.35, .05)) +
-  # Mesic-Partial - Mesic-Total
-   geom_signif(annotation = "*",
-    y_position = 1.05, xmin = 8, xmax = 9,
-    tip_length = c(.3, .05))
 
-# plot 4
+plot5
   
-ggsave("leaf_n_CWM_emmean.png", plot = plot4, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+# ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 ```
 
 #### f. Best-fit Model Table
@@ -579,6 +528,8 @@ dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Area") %>% 
   dplyr::select(CWM, climate, treatment, "climate:treatment")
+
+summary(LA_CWM)
 
 dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
