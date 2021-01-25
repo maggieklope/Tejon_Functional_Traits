@@ -109,38 +109,38 @@ ggplot(cwm_functional, aes(x = weighted_la)) +
   theme_bw()+
   facet_wrap(~functional_group)
 
-#trying glm
-funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_la)
-
-simulateResiduals(funct_la, plot= T) #does not pass dispersion test
-shapiro.test(residuals(funct_la)) #but residuals are normal
-
-testDispersion(simulateResiduals(funct_la, plot= T)) # does not pass
-
-#trying log transformation with gaussian
-cwm_functional <- cwm_functional %>% 
-  mutate(log_la = log(weighted_la))
-
-ggplot(cwm_functional, aes(x = log_la)) +
-  geom_histogram() +
-  theme_bw()+
-  facet_wrap(~functional_group)
-
-funct_la <- glm(data = cwm_functional, log_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_la)
-funct_la <- glm(data = cwm_functional, log_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = gaussian, na.action = na.fail)
-
-simulateResiduals(funct_la, plot= T) #looks good
-shapiro.test(residuals(funct_la)) # but residuals are not normal
-
-# trying Gamma with log link on un-transformed
-funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = Gamma(link = "log"), na.action = na.fail)
-dredge(funct_la)
-funct_la <- glm(data = cwm_functional, weighted_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = Gamma(link = "log"), na.action = na.fail)
-
-simulateResiduals(funct_la, plot= T) #does not pass dispersion test, but is very close!
-shapiro.test(residuals(funct_la)) #but residuals are normal
+# #trying glm
+# funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_la)
+# 
+# simulateResiduals(funct_la, plot= T) #does not pass dispersion test
+# shapiro.test(residuals(funct_la)) #but residuals are normal
+# 
+# testDispersion(simulateResiduals(funct_la, plot= T)) # does not pass
+# 
+# #trying log transformation with gaussian
+# cwm_functional <- cwm_functional %>% 
+#   mutate(log_la = log(weighted_la))
+# 
+# ggplot(cwm_functional, aes(x = log_la)) +
+#   geom_histogram() +
+#   theme_bw()+
+#   facet_wrap(~functional_group)
+# 
+# funct_la <- glm(data = cwm_functional, log_la ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_la)
+# funct_la <- glm(data = cwm_functional, log_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = gaussian, na.action = na.fail)
+# 
+# simulateResiduals(funct_la, plot= T) #looks good
+# shapiro.test(residuals(funct_la)) # but residuals are not normal
+# 
+# # trying Gamma with log link on un-transformed
+# funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = Gamma(link = "log"), na.action = na.fail)
+# dredge(funct_la)
+# funct_la <- glm(data = cwm_functional, weighted_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = Gamma(link = "log"), na.action = na.fail)
+# 
+# simulateResiduals(funct_la, plot= T) #does not pass dispersion test, but is very close!
+# shapiro.test(residuals(funct_la)) #but residuals are normal
 
 #trying log+1 with gaussian
 cwm_functional <- cwm_functional %>% 
@@ -162,14 +162,14 @@ emmeans(funct_la, pairwise ~ treatment | functional_group)
 emmeans(funct_la, pairwise ~ climate | functional_group)
 emmeans(funct_la, pairwise ~ functional_group)
 
-# LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>% 
-#   separate(contrast, c("A", "B"), sep = " - ") %>% 
-#   separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>% 
-#   separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>% 
-#   filter((A_climate == B_climate & A_functional_group == B_functional_group) | 
-#           (A_climate == B_climate & A_treatment == B_treatment) | 
-#            (A_treatment == B_treatment & A_functional_group == B_functional_group))
-# LA_funct_sig_pairs
+LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
+  separate(contrast, c("A", "B"), sep = " - ") %>%
+  separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>%
+  separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>%
+  filter((A_climate == B_climate & A_functional_group == B_functional_group) |
+          (A_climate == B_climate & A_treatment == B_treatment) |
+           (A_treatment == B_treatment & A_functional_group == B_functional_group))
+LA_funct_sig_pairs
 
 ```
 ##### specific leaf area
@@ -183,27 +183,27 @@ ggplot(cwm_functional, aes(x = weighted_sla)) +
 cwm_functional <- cwm_functional %>% 
   mutate(log_sla = log(weighted_sla))
 
-funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_sla)
+# funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_sla)
+# 
+# simulateResiduals(funct_sla, plot= T) #does not pass dispersion test
+# shapiro.test(residuals(funct_sla)) # not normal
+# 
+# # trying log transformation with gaussian
+# funct_sla <- glm(data = cwm_functional, log_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_sla)
+# funct_sla <- glm(data = cwm_functional, log_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+# 
+# simulateResiduals(funct_sla, plot= T) # good
+# shapiro.test(residuals(funct_sla)) # not normal
 
-simulateResiduals(funct_sla, plot= T) #does not pass dispersion test
-shapiro.test(residuals(funct_sla)) # not normal
-
-#trying log transformation with gaussian
-funct_sla <- glm(data = cwm_functional, log_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_sla)
-funct_sla <- glm(data = cwm_functional, log_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
-
-simulateResiduals(funct_sla, plot= T) # good
-shapiro.test(residuals(funct_sla)) # not normal
-
-# trying Gamma with log link on un-transformed
-funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = Gamma, na.action = na.fail)
-dredge(funct_sla)
-funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate + functional_group + treatment + climate:functional_group, family = Gamma, na.action = na.fail)
-
-simulateResiduals(funct_sla, plot= T) # not normal
-shapiro.test(residuals(funct_sla)) # not normal
+# # trying Gamma with log link on un-transformed
+# funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = Gamma, na.action = na.fail)
+# dredge(funct_sla)
+# funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate + functional_group + treatment + climate:functional_group, family = Gamma, na.action = na.fail)
+# 
+# simulateResiduals(funct_sla, plot= T) # not normal
+# shapiro.test(residuals(funct_sla)) # not normal
 
 #trying log+1 with gaussian
 cwm_functional <- cwm_functional %>% 
@@ -281,12 +281,13 @@ emmeans(funct_n, pairwise ~ functional_group)
 ```
 ##### seed mass
 ```{r}
-funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_seed_mass)
-funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
-
-simulateResiduals(funct_seed_mass, plot= T) # bad
-shapiro.test(residuals(funct_seed_mass)) # not normal
+# # untransformed with gaussian
+# funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_seed_mass)
+# funct_seed_mass <- glm(data = cwm_functional, weighted_seed_mass ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+# 
+# simulateResiduals(funct_seed_mass, plot= T) # bad
+# shapiro.test(residuals(funct_seed_mass)) # not normal
 
 # log transformation with gaussian
 cwm_functional <- cwm_functional %>% 
@@ -300,15 +301,22 @@ simulateResiduals(funct_seed_mass, plot= T) # ok
 shapiro.test(residuals(funct_seed_mass)) # normal
 
 # for back transformation
-funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
 
-funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate * functional_group)
+funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+emmeans::contrast(funct_seed_mass)
+
+funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate + functional_group + climate:functional_group)
 summary(funct_seed_mass_emm) # results are given on a log scale
 summary(funct_seed_mass_emm, infer = TRUE, null = log(35), type = "response")
+
+emmeans(funct_seed_mass, ~ climate)
+test_emm <- emmeans(funct_seed_mass, "climate", transform = "log", type = "response")
 
 funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = make.tran("genlog", 1))
 
 contrast(regrid(funct_seed_mass.rg))
+contrast(funct_seed_mass_emm)
+contrast(test_emm)
 
 emmeans(funct_seed_mass.rg, pairwise ~ climate | functional_group)
 emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
@@ -387,13 +395,70 @@ gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = 
 arrow_colors <- (rep(c("red", "orange", "blue"), 9))
 # arrow_colors <- (rep(c("red", "red", "red", "orange", "orange", "orange", "blue", "blue", "blue"), 3))
 
-# Leaf Area
-la_emmeans <- emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
+```
+###### Seed Mass
+```{r}
+# method 1 for plotting back transformation: 
+# re-writing with the transformation in the model
+funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+
+# use emmeans()
+funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate * functional_group)
+
+# then plot with type = "response"
+
+seed_mass_plot_1 <- plot(funct_seed_mass_emm, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+  facet_grid(. ~ functional_group, scales = "free", space = "free") +
+   geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), 
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color ="black") +
+  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = "black") +
+  geom_point(aes_(fill = "black")) +
+  scale_x_discrete(labels = rep(c("Arid", "Intermediate", "Mesic"), 9)) +
+  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate") +
+    theme(legend.position = "none")
+
+# method 2 for plotting back transformation:
+# this uses the model that used the already transformed data
+funct_seed_mass <- glm(data = cwm_functional, log_seed_mass ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+
+# updating with transformation information
+funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = "log")
+
+# plot
+seed_mass_plot_2 <- plot(funct_seed_mass.rg, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+  facet_grid(. ~ functional_group, scales = "free", space = "free") +
+   geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), 
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color ="black") +
+  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = "black") +
+  geom_point(aes_(fill = "black")) +
+  scale_x_discrete(labels = rep(c("Arid", "Intermediate", "Mesic"), 9)) +
+  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate") +
+    theme(legend.position = "none")
+
+seed_mass_plot_1
+seed_mass_plot_2
+
+ggsave("funct_seed_mass_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
+```
+###### Specific Leaf Area
+```{r}
+# log(x+1) transformation
+# funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+```
+###### Leaf Area
+```{r}
+la_emmeans <- emmeans(funct_la, pairwise ~ treatment + climate + functional_group)
 
 # emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
 
 funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
-  facet_grid(. ~ climate + functional_group, scales = "free", space = "free") +
+  facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
   aes(fill = as.factor(treatment)) +
    geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
@@ -407,11 +472,9 @@ funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, ho
   labs(title = "Leaf Area CWM by Functional Group") +
     theme(legend.position = "none")
 
-funct_la_plot
+funct_la_plot 
 
 ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
-
-
 ```
 #### using sjPlot
 ```{r}
