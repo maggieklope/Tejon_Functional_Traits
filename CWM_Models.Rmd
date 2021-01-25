@@ -50,7 +50,6 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 - Calculated with 2017 trait data
 - again, one value per climate/treatment/block so no blocking effect included
-- Include interaction between climate and treatment? AIC values for some are much higher without interaction
 
 ### Models:
 
@@ -234,7 +233,6 @@ TukeyHSD(LA_aov)
 # best fit model
 SLA_CWM <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
 dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
-#NEED TO DO MODEL AVERAGE
 
 # testing data
 simulateResiduals(SLA_CWM, plot= T) #looks good
@@ -256,7 +254,7 @@ multcomp::cld(sla_emm, alpha = 0.05, Letters = LETTERS)
 ```
 ##### i. EMM graph
 ```{r}
-sla_emmeans <- emmeans(SLA_CWM, ~ climate * treatment)
+sla_emmeans <- emmeans(SLA_CWM, ~ treatment | climate)
 
 as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
   filter(p.value <= 0.05)
@@ -268,13 +266,13 @@ plot2 <- emm_plot(sla_emmeans)+
   # adding significance of comparisons
     # Arid-Open - Arid-Total
   geom_signif(annotation = "***",
-    y_position = 3.25, xmin = 1, xmax = 3,
-    tip_length = c(.1, .125)) +
+    y_position = 4.3, xmin = 1, xmax = 3,
+    tip_length = c(.4, .025)) +
   
     # Arid-Partial - Arid-Total
    geom_signif(annotation = "***",
-    y_position = 2.75, xmin = 2, xmax = 3,
-    tip_length = c(.05, .3))
+    y_position = 4.1, xmin = 2, xmax = 3,
+    tip_length = c(.7, .05))
 
 plot2
 
@@ -518,7 +516,7 @@ plot5 <- emm_plot(n_emmeans) +
 
 plot5
   
-# ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 ```
 
 #### f. Best-fit Model Table
