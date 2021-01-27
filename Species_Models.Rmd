@@ -38,7 +38,9 @@ traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>%
   mutate(Species = ifelse(Species == "Trifolium microcephalum", #fixing a typo that makes factors weird
                           "trifolium microcephalum",
                           Species)) %>%
-  mutate(Treatment = ifelse(Treatment == "open", "Open", Treatment)) #same thing, a typo
+  mutate(Treatment = ifelse(Treatment == "open", "Open", Treatment)) %>% #same thing, a typo
+  drop_na() %>% 
+  mutate(log_LA = log(LA))
 
 abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate"#changing name of int climate
 
@@ -113,7 +115,7 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 
 - Does not include block because I only have the mean for each species at each plot
 - Some species are present in all climate/treatment, but some are not
-- Some species could be done with an lm after a log transformation
+- Based off of 2019 abundance data and 2019 trait collection data (LA, SLA, LDMC)
 
 ### Models:
 
@@ -130,9 +132,10 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 ```{r}
 #writing function to take species name and test model with dredge
 
-model_test <- function(species_name){
-  temp_data <- traits_19[traits_19$Species == species_name,]
-  glm <- glm(data = temp_data, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
+model_test <- function(species_name, trait){
+  temp_data <- traits_19[traits_19$Species == species_name,] %>% 
+    drop_na()
+  glm <- glm(data = temp_data, trait ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
   print(dredge(glm))
 }
 
@@ -140,67 +143,57 @@ model_test <- function(species_name){
 
 #### Bromus diandrus
 
-LA ~ Climate
+Best fit: LA ~ 1
+Next best: LA ~ climate
 
-- Invasive grass
-- Best model is intercept only
-- Next best model climate only, with no difference between climates
+- treatment dropped from model
+- no effect of climate
 
 ```{r}
+bro_dia <- traits_19[traits_19$Species == "Bromus diandrus",] 
 
-# data & exploration:
-bro_dia <- traits_19[traits_19$Species == "Bromus diandrus",] %>% 
-  drop_na()
-
-ggplot(bro_dia, aes(x = LA, y = Climate)) +
-  geom_density_ridges() +
-  theme_bw()
-
-ggplot(bro_dia, aes(x = LA, y = Treatment)) +
-  geom_density_ridges() +
-  theme_bw()
 
 # model
-glm_bro_dia <- glm(data = bro_dia, LA ~ Treatment * Climate, family = "gaussian", na.action = na.fail)
-dredge(glm_bro_dia)
+glm_bro_dia <- glm(data = bro_dia , LA ~ Treatment * Climate, family = "gaussian", na.action = na.fail)
+dredge(glm_bro_dia) # best fit model is null, second best includes only Climate
+
+simulateResiduals(glm_bro_dia, plot= T) # looks good
+shapiro.test(residuals(glm_bro_dia)) # normal
+
 glm_bro_dia <- glm(data = bro_dia, LA ~ Climate, family = "gaussian", na.action = na.fail)
 
 simulateResiduals(glm_bro_dia, plot= T) # looks good
-shapiro.test(residuals(glm_bro_dia)) # but residuals are normal (barely)
+shapiro.test(residuals(glm_bro_dia)) # but residuals are just normal
 
-# Post-hoc testing
-emmeans(glm_bro_dia, pairwise ~ Climate) #No difference between climates
+# post-hoc
+emmeans(glm_bro_dia, pairwise ~ Climate)
+
+bro_dia_la <- emmeans(glm_bro_dia, ~ Climate)
+plot(bro_dia_la)
+
 ```
 
 #### Festuca myuros
 
 LA ~ Climate
 
-- non-native grass
-- log transformed
-- Treatment dropped from Model
-- Arid > Intermediate
-- Arid > Mesic
-- No significant difference between Int and Mesic
+- Arid > Intermediate; Arid > Mesic
+- treatment dropped from model
 
 ```{r}
-fes_myu <- traits_19[traits_19$Species == "Festuca myuros",] %>% 
-  drop_na()
+fes_myu <- traits_19[traits_19$Species == "Festuca myuros",]
 
 glm_fes_myu <- glm(data = fes_myu, LA ~ Climate * Treatment,  family = gaussian, na.action = na.fail)
-dredge(glm_fes_myu) # remove treatment from model
+dredge(glm_fes_myu) # best fit climate only
 glm_fes_myu <- glm(data = fes_myu, LA ~ Climate,  family = gaussian, na.action = na.fail)
 
-simulateResiduals(glm_fes_myu, plot=T)
+simulateResiduals(glm_fes_myu, plot=T) # not good
 shapiro.test(residuals(glm_fes_myu)) #not normal
 
 # using log transformation
-fes_myu <- fes_myu %>% 
-  mutate(log_LA = log(LA))
-
-log_fes_myu <- glm(data = fes_myu, log_LA ~ Climate * Treatment,  family = gaussian, na.action = na.fail) # convergence error
-dredge(log_fes_myu) #drop treatment
-log_fes_myu <- glmmTMB(data = fes_myu, log_LA ~ Climate,  family = gaussian)
+log_fes_myu <- glm(data = fes_myu, log_LA ~ Climate * Treatment,  family = gaussian, na.action = na.fail)
+dredge(log_fes_myu) # best fit climate only
+log_fes_myu <- glm(data = fes_myu, log_LA ~ Climate,  family = gaussian, na.action = na.fail)
 
 simulateResiduals(log_fes_myu, plot=T)
 shapiro.test(residuals(log_fes_myu)) #normal
@@ -208,37 +201,43 @@ shapiro.test(residuals(log_fes_myu)) #normal
 # post-hoc testing
 emmeans(log_fes_myu, pairwise ~ Climate)
 
+fes_myu_la <- emmeans(log_fes_myu, ~ Climate)
+plot(fes_myu_la)
+
 ```
 
 #### Bromus hordeaceus
 
-- model drops climate
+LA ~ Climate
+- treatment dropped from model
 - Arid > Int
 
 ```{r}
-bro_ho <- traits_19[traits_19$Species == "Bromus hordeaceus",] %>% 
-  drop_na()
+bro_ho <- traits_19[traits_19$Species == "Bromus hordeaceus",]
 
 glm_bro_ho <- glm(data = bro_ho, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
-dredge(glm_bro_ho) #drops treatment
+dredge(glm_bro_ho) # drops treatment
 glm_bro_ho <- glm(data = bro_ho, LA ~ Climate, family = gaussian, na.action = na.fail)
 
 simulateResiduals(glm_bro_ho, plot=T) # good
 shapiro.test(residuals(glm_bro_ho)) # normal
 
 # post-hoc
-emmeans(glm_bro_ho, pairwise ~ Climate) # Arid > Int
+emmeans(glm_bro_ho, pairwise ~ Climate)
+
+bro_ho_la <- emmeans(glm_bro_ho, ~ Climate)
+plot(bro_ho_la)
 
 ```
 
 #### Bromus tectorum
 
-- invasive grass
-- Best model has intercept only
+LA ~ 1
+
+- best model is intercept only
 
 ```{r}
-bro_tec <- traits_19[traits_19$Species == "Bromus tectorum",] %>% 
-  drop_na()
+bro_tec <- traits_19[traits_19$Species == "Bromus tectorum",]
 
 glm_bro_tec <- glm(data = bro_tec, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_bro_tec) # best model has intercept only
@@ -250,15 +249,15 @@ shapiro.test(residuals(glm_bro_tec)) #normal
 
 #### Hordeum murium
 
-- invasive grass
-- model only includes Treatment
-- Total > Partial
+LA ~ Treatment
+
+- climate dropped from model
+- Total > Open
 
 ```{r}
-hor_mur <- traits_19[traits_19$Species == "Hordeum murinum",]%>% 
-  drop_na()
+hor_mur <- traits_19[traits_19$Species == "Hordeum murinum",]
 
-glm_hor_mur <- glm(data = hor_mur, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail) #convergence
+glm_hor_mur <- glm(data = hor_mur, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_hor_mur) # best fit includes treatment only
 glm_hor_mur <- glm(data = hor_mur, LA ~ Treatment, family = gaussian, na.action = na.fail)
 
@@ -267,19 +266,22 @@ simulateResiduals(glm_hor_mur, plot=T)
 shapiro.test(residuals(glm_hor_mur)) # residuals are normal
 
 # post-hoc
-emmeans(glm_hor_mur, pairwise ~ Treatment) # Open > Total
+emmeans(glm_hor_mur, pairwise ~ Treatment)
+
+hor_mur_la <- emmeans(glm_hor_mur, ~ Treatment)
+plot(hor_mur_la)
 
 ```
 
 #### Erodium cicutarium
 
-- invasive forb
-- need to do model averaging?
+LA ~ 1
+
+Next best is LA ~ climate, but no difference between climate treatments
 
 ```{r}
 
-ero_cic <- traits_19[traits_19$Species == "Erodium cicutarium",] %>% 
-  drop_na()
+ero_cic <- traits_19[traits_19$Species == "Erodium cicutarium",]
 
 glm_ero_cic <- glm(data = ero_cic, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_ero_cic) # best model includes intercept only, but model with climate also has similar AIC value
@@ -289,11 +291,24 @@ glm_ero_cic <- glm(data = ero_cic, LA ~ 1, family = gaussian, na.action = na.fai
 simulateResiduals(glm_ero_cic, plot=T) # good
 shapiro.test(residuals(glm_hor_mur)) # normal
 
+# trying second-best model
+glm_ero_cic <- glm(data = ero_cic, LA ~ Climate, family = gaussian, na.action = na.fail)
+simulateResiduals(glm_ero_cic, plot=T) # doesn't have enough data points?
+shapiro.test(residuals(glm_hor_mur)) # normal
+
+# post-hoc
+emmeans(glm_ero_cic, pairwise ~ Climate)
+
+ero_cic_la <- emmeans(glm_ero_cic, ~ Climate)
+plot(ero_cic_la)
+
 ```
 
 #### Galium aparine
 
 - native forb
+
+LA ~ Climate
 - model drops treatment
 - Nice gradient over climate
     - Arid > Int
@@ -301,8 +316,9 @@ shapiro.test(residuals(glm_hor_mur)) # normal
     - Int > Mesic
 
 ```{r}
-gal_apa <- traits_19[traits_19$Species == "Galium aparine",] %>% 
-  drop_na()
+gal_apa <- traits_19[traits_19$Species == "Galium aparine",]
+
+# models
 glm_gal_apa <- glm(data = gal_apa, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_gal_apa) #best model climate only
 glm_gal_apa <- glm(data = gal_apa, LA ~ Climate, family = gaussian, na.action = na.fail)
@@ -313,35 +329,31 @@ shapiro.test(residuals(glm_gal_apa)) # normal
 # post-hoc testing
 emmeans(glm_gal_apa, pairwise ~ Climate)
 
+gal_apa_la <- emmeans(glm_gal_apa, ~ Climate)
+plot(gal_apa_la, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black")
+
 ```
 
 #### Plagiobothrys nothofulvus
 
-- forb
+- native forb
+
+LA ~ 1
 - log transformed
 - best model is intercept only
 
 ```{r}
 # Plagiobothrys nothofulvus (forb)
-pla_not <- traits_19[traits_19$Species == "Plagiobothrys nothofulvus",] %>% 
-                 drop_na()
+pla_not <- traits_19[traits_19$Species == "Plagiobothrys nothofulvus",]
             
-# appears to be skewed   
-ggplot(bro_dia, aes(x = LA)) +
-  geom_histogram() +
-  theme_bw()
-
 glm_pla_not <- glm(data = pla_not, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_pla_not) # best model intercept only
 
-simulateResiduals(glm_pla_not, plot=T) #not good
+simulateResiduals(glm_pla_not, plot=T) # residuals vs. predicted not good
 shapiro.test(residuals(glm_pla_not)) # normal
 
 # trying log transform
-pla_not <- pla_not %>% 
-  mutate(log_la = log(LA))
-
-glm_pla_not <- glm(data = pla_not, log_la ~ Climate * Treatment, family = gaussian, na.action = na.fail)
+glm_pla_not <- glm(data = pla_not, log_LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
 dredge(glm_pla_not) # best model intercept only
 
 simulateResiduals(glm_pla_not, plot=T) # good
