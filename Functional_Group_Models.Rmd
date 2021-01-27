@@ -87,6 +87,8 @@ cwm_functional %>%
   theme_bw() +
   facet_grid(traits ~ functional_group, scales = "free")
 
+# ggsave("cwm_by_functional_group_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7, bg = "transparent")
+
 grass <- cwm_functional %>% 
   filter(functional_group == "grass")
 
@@ -395,6 +397,20 @@ gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = 
 arrow_colors <- (rep(c("red", "orange", "blue"), 9))
 # arrow_colors <- (rep(c("red", "red", "red", "orange", "orange", "orange", "blue", "blue", "blue"), 3))
 
+funct_emm_plot <- function(emmeans) {
+  plot(emmeans, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black") +
+    # geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), 
+    #            arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+    #            color ="black") +
+    # geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+    #            arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+    #            color = "black") +
+    # geom_point(aes_(fill = "black")) +
+    theme(legend.position = "none")
+}
+
+# The geom_segment() code to change the color of the arrows (by just adding in different arrows over the top) does not work this way becasue some of the arrows do not overlap the points
+
 ```
 ###### Seed Mass
 ```{r}
@@ -407,18 +423,10 @@ funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate * functional_group)
 
 # then plot with type = "response"
 
-seed_mass_plot_1 <- plot(funct_seed_mass_emm, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+seed_mass_plot_1 <- funct_emm_plot(funct_seed_mass_emm)+
   facet_grid(. ~ functional_group, scales = "free", space = "free") +
-   geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), 
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color ="black") +
-  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color = "black") +
-  geom_point(aes_(fill = "black")) +
   scale_x_discrete(labels = rep(c("Arid", "Intermediate", "Mesic"), 9)) +
-  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate") +
-    theme(legend.position = "none")
+  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate")
 
 # method 2 for plotting back transformation:
 # this uses the model that used the already transformed data
@@ -428,28 +436,62 @@ funct_seed_mass <- glm(data = cwm_functional, log_seed_mass ~ climate + function
 funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = "log")
 
 # plot
-seed_mass_plot_2 <- plot(funct_seed_mass.rg, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+seed_mass_plot_2 <- funct_emm_plot(funct_seed_mass.rg)+
   facet_grid(. ~ functional_group, scales = "free", space = "free") +
-   geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), 
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color ="black") +
-  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color = "black") +
-  geom_point(aes_(fill = "black")) +
   scale_x_discrete(labels = rep(c("Arid", "Intermediate", "Mesic"), 9)) +
-  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate") +
-    theme(legend.position = "none")
+  labs(title = "Seed Mass CWM by Functional Group", y = "Seed Mass (mg)", x = "Climate")
 
 seed_mass_plot_1
 seed_mass_plot_2
 
-ggsave("funct_seed_mass_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
+# ggsave("funct_seed_mass_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
 ```
 ###### Specific Leaf Area
 ```{r}
 # log(x+1) transformation
 # funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+
+funct_sla <- glm(data = cwm_functional, log(weighted_sla + 1) ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+
+funct_sla_emm <- emmeans(funct_sla, ~ climate + functional_group + treatment + climate:functional_group)
+
+# plot
+
+funct_emm_plot(funct_sla_emm) +
+  facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
+  aes(fill = as.factor(treatment)) +
+  scale_x_discrete(labels = rep(c("Open", "Partial", "Total"), 9)) +
+  labs(title = "Specific Leaf Area CWM by Functional Group", x = "Treatment") +
+  theme(panel.margin = unit(0, "lines"),
+        panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+        panel.background = element_rect(fill = c("#E2F0D9", "#DEEBF7")))
+
+
+plot(funct_sla_emm, type = "response", by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black") +
+    facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
+    aes(fill = as.factor(treatment)) +
+    scale_x_discrete(labels = rep(c("Open", "Partial", "Total"), 9)) +
+    labs(title = "Specific Leaf Area CWM by Functional Group", x = "Treatment") +
+    # theme(panel.margin = unit(0, "lines"),
+    #     panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+    #     strip.background.x = element_rect(fill = c("#E2F0D9", "#DEEBF7")),
+    #     strip.text.x = element_blank()
+    #     ) + 
+    theme(legend.position = "none")
+  
+plot(funct_sla_emm, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black") +
+  facet_grid(. ~ functional_group + climate, scales = "free", space = "free", 
+             labeller = label_wrap_gen(multi_line=FALSE))
+
+plot(funct_sla_emm, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black") +
+  facet_grid(. ~ functional_group + climate, scales = "free", space = "free", 
+             labeller = label_wrap_gen(multi_line=FALSE),
+             labeller = as_labeller(c(
+               'forb, Arid' = "Forb", 'forb, Intermediate' = "Forb", 'Forb, Meisc' = "Forb", 
+               'grass, Arid' = "grass", 'grass, Intermediate' = "grass", 'grass, Meisc' = "shrub", 
+               'shrub, Arid' = "shrub", 'shrub, Intermediate' = "shrub", 'shrub, Meisc' = "shrub")))
+
+
 ```
 ###### Leaf Area
 ```{r}
@@ -458,7 +500,7 @@ la_emmeans <- emmeans(funct_la, pairwise ~ treatment + climate + functional_grou
 # emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
 
 funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
-  facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
+  facet_grid(. ~ functional_group +climate, scales = "free", space = "free") +
   aes(fill = as.factor(treatment)) +
    geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
