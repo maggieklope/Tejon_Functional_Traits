@@ -6,12 +6,11 @@ fills <- rep(c("#FFF2CC","#E2F0D9", "#DEEBF7"), 3)
 
 p <- plot(funct_sla_emm, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "black") +
   facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
-  theme(panel.margin = unit(0, "lines"),
+  theme(panel.spacing = unit(0, "lines"),
         panel.border = element_rect(color = "black", fill = NA, size = 0.5))
 
-g <- ggplot_gtable(ggplot_build(p))
+panel.spacing = g <- ggplot_gtable(ggplot_build(p))
 
-strip_both <- which(grepl('strip-', g$layout$name))
 stript <- grep("strip", g$layout$name)
 
 grid_cols <- sort(unique(g$layout[stript,]$l))
@@ -34,7 +33,7 @@ grid.draw(g)
 
 k <- 1
 
-for (i in strip_both) {
+for (i in stript) {
   
   # to remove first row of labels
   g$grobs[[i]]$grobs[[1]]$children[[2]]$children[[1]]$label <- "" # first set of strip labels
