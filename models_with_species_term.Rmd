@@ -1,0 +1,144 @@
+---
+title: "Models_with_species_term"
+author: "Maggie Klope"
+date: "1/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
+```
+
+- cannot include Block becuase most species not present in each block
+
+# Leaf Area (raw value, not CWM)
+
+```{r}
+
+# gaussian
+LA_model <- glm(data = traits_19, LA ~ Climate * Treatment * Species, family = gaussian, na.action = na.fail)
+dredge(LA_model)
+LA_model <- glm(data = traits_19, LA ~ Climate + Species + Climate:Species, family = gaussian, na.action = na.fail)
+
+simulateResiduals(LA_model, plot= T)
+
+# log transformation with gaussian
+LA_model <- glm(data = traits_19, log_LA ~ Climate * Treatment * Species, family = gaussian, na.action = na.fail)
+dredge(LA_model)
+LA_model <- glm(data = traits_19, log_LA ~ Climate + Species + Climate:Species, family = gaussian, na.action = na.fail)
+
+simulateResiduals(LA_model, plot = T) # looks good
+shapiro.test(LA_model$residuals) # nomral
+
+emmeans(LA_model, pairwise ~ Climate | Species)
+
+```
+
+# Leaf Area (species-weighted means)
+
+```{r}
+cwm_species <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+  left_join(other_traits, by = "species_name") %>% 
+  mutate(weighted_la = leaf_area * Abundance, na.rm = TRUE) %>% #multiplying trait values by species abundance
+  mutate(weighted_sla = sla * Abundance, na.rm = TRUE) %>% 
+  mutate(weighted_ldmc = ldmc * Abundance, na.rm = TRUE) %>%
+  mutate(weighted_seed_mass = seed_mass * Abundance, na.rm = TRUE) %>%
+  mutate(weighted_n = leaf_n * Abundance, na.rm = TRUE) %>% 
+  group_by(climate, treatment, Block, species_name) %>%   #grouping by climate, treatment, and block %>% 
+  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+  dplyr::select(climate, treatment, species_name, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+
+la <- cwm_species %>% 
+  dplyr::select(climate, treatment, Block, species_name, weighted_la) %>% 
+  mutate(log_la = log(weighted_la)) %>% 
+  mutate(log_plus_la = log(weighted_la + 1)) %>% 
+  mutate(sqrt_la = sqrt(weighted_la)) %>% 
+  na.omit()
+
+# no transformation, gaussian
+la_glm <- glm(data = la, weighted_la ~ climate * treatment * species_name, family = gaussian, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, weighted_la ~ climate * treatment * species_name, family = gaussian, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # horrendous
+shapiro.test(la_glm$residuals)
+
+# log transform, gaussian
+la_glm <- glm(data = la, log_la ~ climate * treatment * species_name, family = gaussian, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, log_la ~ climate + species_name + treatment + climate:species_name + species_name:treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # better, but not good
+shapiro.test(la_glm$residuals)
+
+# no transformation, gamma distribution
+la_glm <- glm(data = la, weighted_la ~ climate * treatment * species_name, family = Gamma, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, weighted_la ~ climate + species_name + treatment + climate:species_name + species_name:climate, family = Gamma, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # better
+shapiro.test(la_glm$residuals) # not normal
+
+# no transformation, gamma with log link 
+la_glm <- glm(data = la, weighted_la ~ climate * treatment * species_name, family = Gamma(link = "log"), na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, weighted_la ~ climate + species_name + treatment + climate:species_name + species_name:climate, family = Gamma(link = "log"), na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # better
+shapiro.test(la_glm$residuals) # not normal
+
+# log+1 transform with gaussian
+la_glm <- glm(data = la, log_plus_la ~ climate * treatment * species_name, family = gaussian, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, log_plus_la ~ climate + species_name + treatment + climate:species_name + species_name:climate, family = gaussian, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # bad
+shapiro.test(la_glm$residuals) # not normal
+
+# log+1 transform with Gamma
+la_glm <- glm(data = la, log_plus_la ~ climate * treatment * species_name, family = Gamma, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, log_plus_la ~ climate + species_name + treatment + climate:species_name + species_name:climate, family = Gamma, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # bad
+shapiro.test(la_glm$residuals) # not normal
+
+# square root transformation with gussian
+la_glm <- glm(data = la, sqrt_la ~ climate * treatment * species_name, family = gaussian, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, sqrt_la ~ climate + species_name + treatment + climate:species_name + climate:treatment + species_name:treatment, family = gaussian, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # bad
+shapiro.test(la_glm$residuals) # not normal
+
+# square root transformation with gussian
+la_glm <- glm(data = la, sqrt_la ~ climate * treatment * species_name, family = Gamma, na.action = na.fail)
+dredge(la_glm)
+la_glm <- glm(data = la, sqrt_la ~ climate + species_name + treatment + climate:species_name + species_name:treatment, family = Gamma, na.action = na.fail)
+
+simulateResiduals(la_glm, plot = T) # ok
+shapiro.test(la_glm$residuals) # not normal
+
+ggplot(la, aes(x = weighted_la)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(la, aes(x = log_la)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(la, aes(x = sqrt_la)) +
+  geom_histogram() +
+  theme_bw()
+
+boxcox(la_glm)
+
+
+```
+
