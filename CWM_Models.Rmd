@@ -105,9 +105,7 @@ emmeans(LA_CWM, pairwise ~ climate)
 emmeans(LA_CWM, pairwise ~ treatment)
 emmeans(LA_CWM, pairwise ~ climate * treatment)
 
-
 #visualization
-plot(emmeans(LA_CWM, ~ climate * treatment), comparisons = TRUE)
 
 # data <- as.data.frame(test$emmeans) %>%
 #   mutate(upper_limit = emmean +  SE) %>%
@@ -134,6 +132,20 @@ plot(emmeans(LA_CWM, ~ climate * treatment),
 #Compact Letter Display
 la_emm <- emmeans(LA_CWM, ~ climate)
 la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
+
+
+pretty_table <- la_data_1 %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast", groupname_col = "functional_group") %>% 
+  tab_header(
+    title = "Climate by Functional Group") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
 
 ```
 ##### i. EMM graph
@@ -174,9 +186,26 @@ emm_plot <- function(emmeans) {
 }
 
 la_emmeans <- emmeans(LA_CWM, ~ treatment * climate)
+emmeans(LA_CWM, specs = pairwise ~ treatment * climate)
+la_emmeans_clim <- as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
 
-as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
-  filter(p.value <= 0.05)
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Treatment") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+pretty_table
+
+gtsave(data = pretty_table, filename = "CWM_LA_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 plot1 <- emm_plot(la_emmeans)+
   # adding title
@@ -277,6 +306,44 @@ plot2 <- emm_plot(sla_emmeans)+
 plot2
 
 ggsave("SLA_CWM_emmean.png", plot = plot2, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+### Comparison Tables
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Treatment") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_SLA_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Climate") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_SLA_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
 ```
 #### c. LDMC CWM
 
@@ -364,6 +431,44 @@ summary(ldmc_aov)
 tukey_LA <- TukeyHSD(ldmc_aov)
 TukeyHSD(ldmc_aov)
 
+### Comparison Tables
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Treatment") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_LDMC_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ climate))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Climate") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_LDMC_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
 ```
 #### d. Seed mass CWM
 
@@ -446,6 +551,45 @@ plot4 <- emm_plot(seed_mass_emmeans) +
 plot4
   
 ggsave("seed_mass_CWM_emmean.png", plot = plot4, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+### Comparison Tables
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ treatment))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Treatment") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_seed_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ climate))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Climate") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_seed_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
 ```
 #### e. Leaf-N CWM
 
@@ -492,12 +636,12 @@ LNC_sig_pairs <- LNC_pairs %>%
 
 emmeans(log_n_CWM, pairwise ~ climate + treatment)
 
-log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate  treatment))) %>% 
-  dplyr::select(contrasts.contrast, contrasts.treatment, contrasts.estimate, contrasts.p.value) %>% 
-  mutate(significance = ifelse(contrasts.p.value < 0.05, "*", " ")) %>% 
-  rename(Climates = "contrasts.contrast", Treatment = contrasts.treatment, Estimate = contrasts.estimate, "p-value" = contrasts.p.value)
+# log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate  treatment))) %>% 
+#   dplyr::select(contrasts.contrast, contrasts.treatment, contrasts.estimate, contrasts.p.value) %>% 
+#   mutate(significance = ifelse(contrasts.p.value < 0.05, "*", " ")) %>% 
+#   rename(Climates = "contrasts.contrast", Treatment = contrasts.treatment, Estimate = contrasts.estimate, "p-value" = contrasts.p.value)
 
-write.csv(log_n_contrasts, file = "~/github/Tejon_Functional_Traits/Datasheets/log_n_contrasts.", row.names = FALSE)
+# write.csv(log_n_contrasts, file = "~/github/Tejon_Functional_Traits/Datasheets/log_n_contrasts.", row.names = FALSE)
 
 plot(emmeans(log_n_CWM, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
@@ -517,6 +661,45 @@ plot5 <- emm_plot(n_emmeans) +
 plot5
   
 ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+### Comparison Tables
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Treatment") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_LNC_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+la_emmeans_clim <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate))$contrasts) %>% 
+  dplyr::select(contrast, estimate, p.value)
+
+pretty_table <- la_emmeans_clim %>% 
+  as_tibble() %>% 
+  gt(rowname_col = "contrast") %>% 
+  tab_header(
+    title = "Comparisons by Climate") %>% 
+  fmt_number("p.value", decimal = 4) %>% 
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(p.value),
+      rows = p.value <= 0.05)
+  )
+
+gtsave(data = pretty_table, filename = "CWM_LNC_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
 ```
 
 #### f. Best-fit Model Table
