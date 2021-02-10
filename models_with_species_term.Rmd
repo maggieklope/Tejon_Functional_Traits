@@ -15,7 +15,7 @@ library(MuMIn) #model summaries and comparisons
 library(emmeans) #post-hoc analyses
 ```
 
-- cannot include Block becuase most species not present in each block
+- cannot include Block because most species not present in each block
 
 # Leaf Area (raw value, not CWM)
 

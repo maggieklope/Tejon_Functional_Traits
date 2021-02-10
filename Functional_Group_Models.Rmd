@@ -421,6 +421,7 @@ funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate 
 # use emmeans()
 funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate * functional_group)
 
+
 # then plot with type = "response"
 
 seed_mass_plot_1 <- funct_emm_plot(funct_seed_mass_emm)+
@@ -454,6 +455,8 @@ seed_mass_plot_2
 funct_sla <- glm(data = cwm_functional, log(weighted_sla + 1) ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
 
 funct_sla_emm <- emmeans(funct_sla, ~ climate + functional_group + treatment + climate:functional_group)
+
+emmeans(funct_sla, pairwise ~ climate + functional_group + treatment + climate:functional_group)
 
 # plot
 
@@ -491,16 +494,18 @@ plot(funct_sla_emm, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FAL
                'grass, Arid' = "grass", 'grass, Intermediate' = "grass", 'grass, Meisc' = "shrub", 
                'shrub, Arid' = "shrub", 'shrub, Intermediate' = "shrub", 'shrub, Meisc' = "shrub")))
 
+emmeans(funct_sla, pairwise ~ treatment)
+
 
 ```
 ###### Leaf Area
 ```{r}
-la_emmeans <- emmeans(funct_la, pairwise ~ treatment + climate + functional_group)
+funct_la_emm <- emmeans(funct_la, pairwise ~ treatment + climate + functional_group)
 
 # emmeans(funct_la, pairwise ~ treatment | climate | functional_group)
 
 funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
-  facet_grid(. ~ functional_group +climate, scales = "free", space = "free") +
+  facet_grid(. ~ functional_group + climate, scales = "free", space = "free") +
   aes(fill = as.factor(treatment)) +
    geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
@@ -517,6 +522,8 @@ funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, ho
 funct_la_plot 
 
 ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
+
+
 ```
 #### using sjPlot
 ```{r}
