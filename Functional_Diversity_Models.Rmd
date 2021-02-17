@@ -19,6 +19,7 @@ library(emmeans) #post-hoc analyses
 # library(performance) #for R2 values
 library(gt)
 library(knitr)
+library(ggsignif) # for adding significance comparisons to graphs
 ```
 
 ### Calculations
@@ -311,8 +312,22 @@ FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>%
 # all pairwise comparisons
 emmeans(FRic, pairwise ~ climate)
 emmeans(FRic, pairwise ~ treatment)
-# emmeans(FRic, pairwise ~ climate * treatment)
+emmeans(FRic, pairwise ~ climate * treatment)
 emmeans(FRic, pairwise ~ climate | treatment)
+pairs(emmeans(FRic, ~ climate | treatment)) # same thing
+
+
+# looking at ggeffects graphs to plot marginal means
+library(ggeffects)
+
+dat <- ggpredict(FRic, terms = c("climate", "treatment"))
+dat <- ggpredict(FRic, terms = c("treatment", "climate"))
+plot(dat, facet = TRUE)
+plot(dat)
+plot(dat, connect.lines = TRUE, ci.style = "dot")
+
+
+
 
 ```
 
