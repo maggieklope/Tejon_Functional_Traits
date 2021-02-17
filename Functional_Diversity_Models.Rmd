@@ -322,12 +322,11 @@ library(ggeffects)
 
 dat <- ggpredict(FRic, terms = c("climate", "treatment"))
 dat <- ggpredict(FRic, terms = c("treatment", "climate"))
-plot(dat, facet = TRUE)
+test_plot <- plot(dat, facet = TRUE)
 plot(dat)
 plot(dat, connect.lines = TRUE, ci.style = "dot")
 
-
-
+# ggsave("FRic_emmean.png", plot = test_plot, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 4, width = 5, bg = "transparent")
 
 ```
 
@@ -658,6 +657,19 @@ FDis_plot <- emm_plot(FDis_emmeans) +
     tip_length = c(.05, .35))
 
 ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+
+```
+
+#### ggeffects Graphs
+```{r}
+
+FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")), facet = TRUE)
+# FEve_plot <- plot(ggpredict(FEve), facet = TRUE)
+FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")), facet = TRUE)
+
+FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
+
+ggsave("CFD_emmeans.png", plot = FD_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
 
 ```
 
