@@ -23,6 +23,7 @@ library(lsmeans)
 library(gridExtra)
 library(multcomp)
 library(car)
+library(ggeffects)
 
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
 
@@ -528,12 +529,13 @@ ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", w
 
 #### ggeffects Graphs
 ```{r}
+ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
-funct_la_plot <- plot(ggpredict(funct_la, terms = c("treatment", "climate", "functional_group")), facet = TRUE)
-funct_sla_plot <- plot(ggpredict(funct_sla, terms = c("treatment", "climate", "functional_group")), facet = TRUE)
-funct_ldmc_plot <- plot(ggpredict(funct_ldmc, terms = c("treatment", "climate", "functional_group")), facet = TRUE)
-funct_n_plot <- plot(ggpredict(funct_n, terms = c("treatment", "climate", "functional_group")), facet = TRUE)
-funct_seed_mass_plot <- plot(ggpredict(funct_seed_mass, terms = c("climate", "functional_group")), facet = TRUE)
+funct_la_plot <- plot(ggpredict(funct_la, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors, facet = TRUE)
+funct_sla_plot <- plot(ggpredict(funct_sla, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
+funct_ldmc_plot <- plot(ggpredict(funct_ldmc, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
+funct_n_plot <- plot(ggpredict(funct_n, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
+funct_seed_mass_plot <- plot(ggpredict(funct_seed_mass, terms = c("climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 
 funct_group_CWM_emmeans <- grid.arrange(funct_la_plot, funct_sla_plot, funct_ldmc_plot, funct_n_plot, funct_seed_mass_plot)
 
