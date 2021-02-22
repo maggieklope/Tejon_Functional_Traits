@@ -532,6 +532,7 @@ ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", w
 ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
 funct_la_plot <- plot(ggpredict(funct_la, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors, facet = TRUE)
+funct_la_plot
 funct_sla_plot <- plot(ggpredict(funct_sla, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_ldmc_plot <- plot(ggpredict(funct_ldmc, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_n_plot <- plot(ggpredict(funct_n, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
