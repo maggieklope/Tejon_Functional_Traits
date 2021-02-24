@@ -662,10 +662,11 @@ ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Tr
 
 #### ggeffects Graphs
 ```{r}
+ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
-FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")), facet = TRUE)
-# FEve_plot <- plot(ggpredict(FEve), facet = TRUE)
-FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")), facet = TRUE)
+FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+# FEve_plot <- plot(ggpredict(FEve),  colors = ggeffects_colors, facet = TRUE)
+FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
 
 FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
 
