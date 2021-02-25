@@ -24,6 +24,7 @@ library(multcomp)
 library(car)
 # remotes::install_github("const-ae/ggsignif")
 library(ggsignif)
+library(ggeffects)
 
 
 other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
@@ -930,8 +931,11 @@ modelsummary::modelsummary(models,
 ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
 LA_CWM_plot <- plot(ggpredict(LA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+
 SLA_CWM_plot <- plot(ggpredict(SLA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
-LDMC_CWM_plot <- plot(ggpredict(LDMC_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+
+LDMC_CWM_plot <- plot(ggpredict(LDMC_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+  
 log_seed_mass_plot <- plot(ggpredict(log_seed_mass, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
 log_n_CWM_plot <- plot(ggpredict(log_n_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
 
