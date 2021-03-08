@@ -70,7 +70,7 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
   facet_wrap(~traits, scales = "free", nrow = 3) +
   scale_fill_manual(values = c("#ffffff", "#d9d9d9", "#969696"))
 
-ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7)
+# ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7)
 
 ```
 
