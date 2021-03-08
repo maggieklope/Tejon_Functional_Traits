@@ -711,8 +711,6 @@ dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
   mutate(CWM = "Leaf Area") %>% 
   dplyr::select(CWM, climate, treatment, "climate:treatment")
 
-summary(LA_CWM)
-
 dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Specific Leaf Area") %>% 
@@ -769,7 +767,69 @@ pretty_table <- dredge_table %>%
 
 ```
 
-#### g. EMM Graphs
+#### g. AIC Supplement
+
+```{r}
+
+dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
+  mutate(CWM = "Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
+  mutate(CWM = "Specific Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
+  mutate(CWM = "Leaf Dry Matter Content") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
+  mutate(CWM = "Seed Mass (log)") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log)") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_table <- dredge_LA %>% 
+  full_join(dredge_SLA) %>% 
+  full_join(dredge_LDMC) %>% 
+  full_join(dredge_log_seed_mass) %>% 
+  full_join(dredge_log_n) %>% 
+  mutate(climate = str_replace(climate, "\\+","x")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
+
+# dredge_table
+
+# Trying gt package
+# data must be a tibble
+
+cwm_aic_sup <- dredge_table %>% 
+  as_tibble() %>% 
+  gt() %>% 
+  tab_header(
+    title = "CWM Models"
+  ) %>% 
+  tab_spanner(
+    label = "Fixed Effects Terms",
+    columns = vars(climate, treatment, "climate:treatment")
+  ) %>% 
+  fmt_missing(
+    columns = vars(climate, treatment, "climate:treatment"),
+    missing_text = " "
+  ) %>% 
+  tab_source_note(
+    source_note = "x indicates selection of fixed effect term for best-fit model"
+  )
+
+cwm_aic_sup
+
+gtsave(data = cwm_aic_sup, filename = "CWM_AIC_Supplement.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+```
+
+#### h. EMM Graphs
 
 ```{r}
 # arrow_colors <- (rep(c("red", "orange", "blue"), 3))
@@ -903,7 +963,7 @@ pretty_table <- dredge_table %>%
 
 ```
 
-#### h. testing model summary package
+#### i. testing model summary package
 
 ```{r}
 library(modelsummary)

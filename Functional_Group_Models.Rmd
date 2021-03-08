@@ -160,19 +160,19 @@ funct_la <- glm(data = cwm_functional, log_plus_la ~ climate + treatment + funct
 simulateResiduals(funct_la, plot= T) #good
 shapiro.test(residuals(funct_la)) #residuals are normal
 
-emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
-emmeans(funct_la, pairwise ~ treatment | functional_group)
-emmeans(funct_la, pairwise ~ climate | functional_group)
-emmeans(funct_la, pairwise ~ functional_group)
-
-LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
-  separate(contrast, c("A", "B"), sep = " - ") %>%
-  separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>%
-  separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>%
-  filter((A_climate == B_climate & A_functional_group == B_functional_group) |
-          (A_climate == B_climate & A_treatment == B_treatment) |
-           (A_treatment == B_treatment & A_functional_group == B_functional_group))
-LA_funct_sig_pairs
+# emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
+# emmeans(funct_la, pairwise ~ treatment | functional_group)
+# emmeans(funct_la, pairwise ~ climate | functional_group)
+# emmeans(funct_la, pairwise ~ functional_group)
+# 
+# LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
+#   separate(contrast, c("A", "B"), sep = " - ") %>%
+#   separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>%
+#   separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>%
+#   filter((A_climate == B_climate & A_functional_group == B_functional_group) |
+#           (A_climate == B_climate & A_treatment == B_treatment) |
+#            (A_treatment == B_treatment & A_functional_group == B_functional_group))
+# LA_funct_sig_pairs
 
 ```
 ##### specific leaf area
@@ -219,9 +219,9 @@ funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_grou
 simulateResiduals(funct_sla, plot= T) #good
 shapiro.test(residuals(funct_sla)) #normal
 
-emmeans(funct_sla, pairwise ~ climate | treatment | functional_group)
-emmeans(funct_sla, pairwise ~ treatment | functional_group)
-emmeans(funct_sla, pairwise ~ functional_group)
+# emmeans(funct_sla, pairwise ~ climate | treatment | functional_group)
+# emmeans(funct_sla, pairwise ~ treatment | functional_group)
+# emmeans(funct_sla, pairwise ~ functional_group)
 
 ```
 ##### ldmc
@@ -229,12 +229,12 @@ emmeans(funct_sla, pairwise ~ functional_group)
 cwm_functional <- cwm_functional %>% 
   mutate(log_ldmc = log(weighted_ldmc))
 
-funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_ldmc)
-funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
-
-simulateResiduals(funct_ldmc, plot= T) # does not pass dispersion test
-shapiro.test(residuals(funct_ldmc)) # not normal
+# funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_ldmc)
+# funct_ldmc <- glm(data = cwm_functional, weighted_ldmc ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
+# 
+# simulateResiduals(funct_ldmc, plot= T) # does not pass dispersion test
+# shapiro.test(residuals(funct_ldmc)) # not normal
 
 # log transformation
 funct_ldmc <- glm(data = cwm_functional, log_ldmc ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
@@ -244,30 +244,30 @@ funct_ldmc <- glm(data = cwm_functional, log_ldmc ~ climate + functional_group +
 simulateResiduals(funct_ldmc, plot= T) # ok
 shapiro.test(residuals(funct_ldmc)) # normal
 
-emmeans(funct_ldmc, pairwise ~ climate | treatment | functional_group)
-emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
-emmeans(funct_ldmc, pairwise ~ functional_group)
+# emmeans(funct_ldmc, pairwise ~ climate | treatment | functional_group)
+# emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
+# emmeans(funct_ldmc, pairwise ~ functional_group)
 ```
 ##### lnc
 ```{r}
-funct_n <- glm(data = cwm_functional, weighted_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_n)
-funct_n <- glm(data = cwm_functional, weighted_n ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
-
-simulateResiduals(funct_n, plot= T) # not good
-shapiro.test(residuals(funct_n)) # not normal
+# funct_n <- glm(data = cwm_functional, weighted_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_n)
+# funct_n <- glm(data = cwm_functional, weighted_n ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, na.action = na.fail)
+# 
+# simulateResiduals(funct_n, plot= T) # not good
+# shapiro.test(residuals(funct_n)) # not normal
 
 cwm_functional <- cwm_functional %>% 
   mutate(log_n = log(weighted_n)) %>% 
   mutate(log_plus_n = log(weighted_n+1))
 
-# trying log transformation with gaussian
-funct_n <- glm(data = cwm_functional, log_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-dredge(funct_n)
-funct_n <- glm(data = cwm_functional, log_n ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
-
-simulateResiduals(funct_n, plot= T) # looks ok
-shapiro.test(residuals(funct_n)) # not normal
+# # trying log transformation with gaussian
+# funct_n <- glm(data = cwm_functional, log_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
+# dredge(funct_n)
+# funct_n <- glm(data = cwm_functional, log_n ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+# 
+# simulateResiduals(funct_n, plot= T) # looks ok
+# shapiro.test(residuals(funct_n)) # not normal
 
 # trying log(n+1) transformation with gaussian
 funct_n <- glm(data = cwm_functional, log_plus_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
@@ -277,9 +277,9 @@ funct_n <- glm(data = cwm_functional, log_plus_n ~ climate + functional_group + 
 simulateResiduals(funct_n, plot= T) # looks ok
 shapiro.test(residuals(funct_n)) # normal
 
-emmeans(funct_n, pairwise ~ climate | treatment | functional_group)
-emmeans(funct_n, pairwise ~ treatment | functional_group)
-emmeans(funct_n, pairwise ~ functional_group)
+# emmeans(funct_n, pairwise ~ climate | treatment | functional_group)
+# emmeans(funct_n, pairwise ~ treatment | functional_group)
+# emmeans(funct_n, pairwise ~ functional_group)
 
 ```
 ##### seed mass
@@ -305,26 +305,26 @@ shapiro.test(residuals(funct_seed_mass)) # normal
 
 # for back transformation
 
-funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
-emmeans::contrast(funct_seed_mass)
-
-funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate + functional_group + climate:functional_group)
-summary(funct_seed_mass_emm) # results are given on a log scale
-summary(funct_seed_mass_emm, infer = TRUE, null = log(35), type = "response")
-
-emmeans(funct_seed_mass, ~ climate)
-test_emm <- emmeans(funct_seed_mass, "climate", transform = "log", type = "response")
-
-funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = make.tran("genlog", 1))
-
-contrast(regrid(funct_seed_mass.rg))
-contrast(funct_seed_mass_emm)
-contrast(test_emm)
-
-emmeans(funct_seed_mass.rg, pairwise ~ climate | functional_group)
-emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
-emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
-emmeans(funct_seed_mass, pairwise ~ functional_group)
+# funct_seed_mass <- glm(data = cwm_functional, log(weighted_seed_mass) ~ climate + functional_group + climate:functional_group, na.action = na.fail)
+# emmeans::contrast(funct_seed_mass)
+# 
+# funct_seed_mass_emm <- emmeans(funct_seed_mass, ~ climate + functional_group + climate:functional_group)
+# summary(funct_seed_mass_emm) # results are given on a log scale
+# summary(funct_seed_mass_emm, infer = TRUE, null = log(35), type = "response")
+# 
+# emmeans(funct_seed_mass, ~ climate)
+# test_emm <- emmeans(funct_seed_mass, "climate", transform = "log", type = "response")
+# 
+# funct_seed_mass.rg <- update(ref_grid(funct_seed_mass), tran = make.tran("genlog", 1))
+# 
+# contrast(regrid(funct_seed_mass.rg))
+# contrast(funct_seed_mass_emm)
+# contrast(test_emm)
+# 
+# emmeans(funct_seed_mass.rg, pairwise ~ climate | functional_group)
+# emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
+# emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
+# emmeans(funct_seed_mass, pairwise ~ functional_group)
 
 ```
 ##### Best-Fit Model Table
@@ -332,7 +332,7 @@ emmeans(funct_seed_mass, pairwise ~ functional_group)
 dredge_funct_la <- as.data.frame(dredge(funct_la)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "Leaf Area (log(x+1))") %>% 
-  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group","climate:treatment", "functional_group:treatment", "climate:functional_group")
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", "climate:functional_group")
 
 dredge_funct_sla <-  as.data.frame(dredge(funct_sla)) %>% 
   filter(AICc == min(AICc)) %>% 
@@ -363,7 +363,7 @@ dredge_table <- dredge_funct_la %>%
   mutate(functional_group = str_replace(functional_group, "\\+","x")) %>%
   mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
   mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x")) %>%
-  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x")) %>% 
+  mutate(`climate:treatment` = NA) %>% 
   mutate(`functional_group:treatment` = str_replace(`functional_group:treatment`, "\\+","x")) %>% 
   mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x"))
 
@@ -371,6 +371,66 @@ dredge_table <- dredge_funct_la %>%
 # data must be a tibble
 
 pretty_table <- dredge_table %>% 
+  as_tibble() %>% 
+  gt() %>% 
+  tab_header(
+    title = "Functional Group CWM Best-Fit Models"
+  ) %>% 
+  tab_spanner(
+    label = "Fixed Effects Terms",
+    columns = vars(climate, functional_group, treatment, "climate:functional_group", "climate:treatment", "functional_group:treatment", "climate:functional_group")
+  ) %>% 
+  fmt_missing(
+    columns = vars(climate, functional_group, treatment, "climate:functional_group", "climate:treatment", "functional_group:treatment", "climate:functional_group"),
+    missing_text = " "
+  ) %>% 
+  tab_source_note(
+    source_note = "x indicates selection of fixed effect term for best-fit model"
+  )
+
+pretty_table
+
+gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+```
+##### AIC Supplement
+```{r}
+dredge_funct_la <- as.data.frame(dredge(funct_la)) %>%
+  mutate(CWM = "Leaf Area (log(x+1))") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", "climate:functional_group", AICc)
+
+dredge_funct_sla <-  as.data.frame(dredge(funct_sla)) %>% 
+  mutate(CWM = "Specific Leaf Area (log(x+1)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
+
+dredge_funct_ldmc <- as.data.frame(dredge(funct_ldmc)) %>% 
+  mutate(CWM = "Leaf Dry Matter Content (log)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", AICc)
+
+dredge_funct_seed_mass <- as.data.frame(dredge(funct_seed_mass)) %>% 
+  mutate(CWM = "Seed Mass (log)") %>% 
+  dplyr::select(CWM, climate, functional_group, "climate:functional_group", AICc)
+
+dredge_funct_n <- as.data.frame(dredge(funct_n)) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log(x+1)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
+
+dredge_table <- dredge_funct_la %>% 
+  full_join(dredge_funct_sla) %>% 
+  full_join(dredge_funct_ldmc) %>% 
+  full_join(dredge_funct_seed_mass) %>% 
+  full_join(dredge_funct_n) %>% 
+  mutate(climate = str_replace(climate, "\\+","x")) %>%
+  mutate(functional_group = str_replace(functional_group, "\\+","x")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+  mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x")) %>%
+  mutate(`climate:treatment` = NA) %>% 
+  mutate(`functional_group:treatment` = str_replace(`functional_group:treatment`, "\\+","x")) %>% 
+  mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x"))
+
+# Trying gt package
+# data must be a tibble
+
+funct_cwm_aic_sup <- dredge_table %>% 
   as_tibble() %>% 
   gt() %>% 
   tab_header(
@@ -388,10 +448,11 @@ pretty_table <- dredge_table %>%
     source_note = "x indicates selection of fixed effect term for best-fit model"
   )
 
-# pretty_table
+# funct_cwm_aic_sup
 
-gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+gtsave(data = funct_cwm_aic_sup, filename = "Funct_Group_AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
 ```
+
 ##### EMM Graphs
 ```{r}
 # color of arrows
