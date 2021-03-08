@@ -160,10 +160,10 @@ funct_la <- glm(data = cwm_functional, log_plus_la ~ climate + treatment + funct
 simulateResiduals(funct_la, plot= T) #good
 shapiro.test(residuals(funct_la)) #residuals are normal
 
-# emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
-# emmeans(funct_la, pairwise ~ treatment | functional_group)
-# emmeans(funct_la, pairwise ~ climate | functional_group)
-# emmeans(funct_la, pairwise ~ functional_group)
+emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_la, pairwise ~ treatment | functional_group)
+emmeans(funct_la, pairwise ~ climate | functional_group)
+emmeans(funct_la, pairwise ~ treatment)
 # 
 # LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
 #   separate(contrast, c("A", "B"), sep = " - ") %>%
@@ -583,7 +583,7 @@ funct_la_plot <- plot(la_emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, ho
 
 funct_la_plot 
 
-ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
+# ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 10, height = 7, bg = "transparent")
 
 
 ```
@@ -593,7 +593,6 @@ ggsave("funct_la_plot.png", path = "~/github/Tejon_Functional_Traits/Figures", w
 ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
 funct_la_plot <- plot(ggpredict(funct_la, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors, facet = TRUE)
-funct_la_plot
 funct_sla_plot <- plot(ggpredict(funct_sla, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_ldmc_plot <- plot(ggpredict(funct_ldmc, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_n_plot <- plot(ggpredict(funct_n, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
