@@ -514,21 +514,3 @@ modelsummary::modelsummary(models,
 
 ```
 
-#### ggeffects Graphs
-```{r}
-ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
-
-LA_CWM_plot <- plot(ggpredict(LA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
-
-SLA_CWM_plot <- plot(ggpredict(SLA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
-
-LDMC_CWM_plot <- plot(ggpredict(LDMC_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
-  
-log_seed_mass_plot <- plot(ggpredict(log_seed_mass, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
-log_n_CWM_plot <- plot(ggpredict(log_n_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
-
-CWM_emmeans <- grid.arrange(LA_CWM_plot, SLA_CWM_plot, LDMC_CWM_plot, log_seed_mass_plot, log_n_CWM_plot)
-
-ggsave("CWM_emmeans.png", plot = CWM_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 10)
-
-```

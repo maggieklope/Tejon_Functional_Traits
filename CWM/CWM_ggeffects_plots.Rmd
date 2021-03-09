@@ -1,0 +1,45 @@
+---
+title: "CWM_ggeffects_plots"
+author: "Maggie Klope"
+date: "3/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(stats)
+library(sjPlot)
+library(FD)
+library(DHARMa) #model diagnostics
+library(glmmTMB) #model fitting
+library(MuMIn) #model summaries and comparisons
+library(emmeans) #post-hoc analyses
+library(gt)
+library(tibble)
+library(lsmeans)
+library(gridExtra)
+library(multcomp)
+library(car)
+# remotes::install_github("const-ae/ggsignif")
+library(ggsignif)
+library(ggeffects)
+```
+
+## Basic Plots
+```{r}
+ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
+
+LA_CWM_plot <- plot(ggpredict(LA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+SLA_CWM_plot <- plot(ggpredict(SLA_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+LDMC_CWM_plot <- plot(ggpredict(LDMC_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+log_seed_mass_plot <- plot(ggpredict(log_seed_mass, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+log_n_CWM_plot <- plot(ggpredict(log_n_CWM, terms = c("treatment", "climate")),  colors = ggeffects_colors,facet = TRUE)
+
+CWM_emmeans <- grid.arrange(LA_CWM_plot, SLA_CWM_plot, LDMC_CWM_plot, log_seed_mass_plot, log_n_CWM_plot)
+
+# ggsave("CWM_emmeans.png", plot = CWM_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 10)
+```
+
+
