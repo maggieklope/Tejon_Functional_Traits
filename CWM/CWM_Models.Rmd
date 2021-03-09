@@ -27,9 +27,9 @@ library(ggsignif)
 library(ggeffects)
 
 
-other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
+other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
-cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_TraitsDatasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
   mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
   mutate(weighted_sla = sla * Abundance) %>% 
@@ -70,7 +70,7 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
   facet_wrap(~traits, scales = "free", nrow = 3) +
   scale_fill_manual(values = c("#ffffff", "#d9d9d9", "#969696"))
 
-# ggsave("CWM_barchart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7)
+# ggsave("CWM_barchart.png", path = "~/Users/User_2/github//Tejon_Functional_Traits/Figures", width = 9, height = 7)
 
 ```
 
@@ -150,86 +150,7 @@ pretty_table <- la_data_1 %>%
 plot_model(LA_CWM)
 
 ```
-##### i. EMM graph
-```{r}
-# color of arrows
-arrow_colors <- (rep(c("red", "orange", "blue"), 3))
-
-# significance caption
-symbol <- "\u2264"
-caption <- paste0(symbol, "0.05(*), ", symbol, "0.01()**, ", symbol, "0.001(***)")
-
-#function
-emm_plot <- function(emmeans) {
-  plot(emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
-  # # facet_grid by climate, and remove empty values
-  # facet_grid(. ~climate, scales = "free", space = "free") +
-  labs(y = "EMM", x = "Climate") +
-  aes(fill = as.factor(treatment)) +
-  # changing color of comparison arrow lines
-  geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color = arrow_colors) +
-  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
-               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-               color = arrow_colors) +
-  # changing color of point
-  geom_point(aes_(fill = "black")) +
-  # changing theme
-  theme_bw() +
-  # removing legend
-  theme(legend.position = "none") +
-  # changing x labels within facet_grid
-  scale_x_discrete(labels = c("Open", "Partial", "Total", "Open", "Partial", "Total", "Open", "Partial", "Total")) +
-  # transparent background
-  theme(panel.background = element_rect(fill = "transparent"), plot.background = element_rect(fill = "transparent", color = NA)) +
-  # adding footnote
-  labs(caption = caption)
-}
-
-la_emmeans <- emmeans(LA_CWM, ~ treatment * climate)
-emmeans(LA_CWM, specs = pairwise ~ treatment * climate)
-la_emmeans_clim <- as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Treatment") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-pretty_table
-
-gtsave(data = pretty_table, filename = "CWM_LA_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-plot1 <- emm_plot(la_emmeans)+
-  # adding title
-  labs(title = "Leaf Area CWM") +
-  
-  # adding significance of comparisons
-   # Arid-Open - Arid-Total
-  geom_signif(annotation = "***",
-    y_position = 90, xmin = 1, xmax = 3,
-    tip_length = c(.75, .05)) +
-  
-  # Arid-Partial - Arid-Total
-  geom_signif(annotation = "***",
-    y_position = 85, xmin = 2, xmax = 3,
-    tip_length = c(.5, .05))
-
-
-plot1
-
-ggsave("LA_CWM_emmean.png", plot = plot1, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
-```
-##### ii. double-checking against ANOVA results
+##### i. double-checking against ANOVA results
 ```{r}
 # double-checking against anova results
 LA_aov <- aov(data = cwm_traits_adj, weighted_la ~ climate * treatment)
@@ -241,8 +162,6 @@ shapiro.test(residuals(LA_aov))
 summary(LA_aov)
 tukey_LA <- TukeyHSD(LA_aov)
 TukeyHSD(LA_aov)
-
-
 ```
 
 
@@ -284,70 +203,7 @@ sla_emm <- emmeans(SLA_CWM, ~ climate)
 multcomp::cld(sla_emm, alpha = 0.05, Letters = LETTERS)
 
 ```
-##### i. EMM graph
-```{r}
-sla_emmeans <- emmeans(SLA_CWM, ~ treatment | climate)
 
-as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
-  filter(p.value <= 0.05)
-
-plot2 <- emm_plot(sla_emmeans)+
-  # adding title
-  labs(title = "Specific Leaf Area CWM") +
-  
-  # adding significance of comparisons
-    # Arid-Open - Arid-Total
-  geom_signif(annotation = "***",
-    y_position = 4.3, xmin = 1, xmax = 3,
-    tip_length = c(.4, .025)) +
-  
-    # Arid-Partial - Arid-Total
-   geom_signif(annotation = "***",
-    y_position = 4.1, xmin = 2, xmax = 3,
-    tip_length = c(.7, .05))
-
-plot2
-
-ggsave("SLA_CWM_emmean.png", plot = plot2, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
-
-### Comparison Tables
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Treatment") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_SLA_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Climate") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_SLA_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
-```
 #### c. LDMC CWM
 
 - Same trend observed between all climates
@@ -396,83 +252,7 @@ plot(emmeans(LDMC_CWM, pairwise ~ treatment + climate), comparisons = TRUE)
 multcomp::cld(emmeans(LDMC_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
-##### i. EMM graph
-```{r}
-ldmc_emmeans <- emmeans(LDMC_CWM, ~ treatment | climate)
 
-as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
-  filter(p.value <= 0.05)
-
-plot3 <- emm_plot(ldmc_emmeans) +
-  # adding title
-  labs(title = "Leaf Dry Matter Content CWM") +
-  # adding significance of comparisons
-  # Arid-Partial - Arid-Total
-  geom_signif(annotation = "**",
-    y_position = 42, xmin = 2, xmax = 3,
-    tip_length = c(.25, .02)) +
-  # Int-Partial - Int-Total
-  geom_signif(annotation = "**",
-    y_position = 55, xmin = 5, xmax = 6,
-    tip_length = c(.5, .1)) +
-  # Mesic-Partial - Mesic-Total
-   geom_signif(annotation = "**",
-    y_position = 40, xmin = 8, xmax = 9,
-    tip_length = c(.25, .05))
-
-plot3
-
-ggsave("LDMC_CWM_emmean.png", plot = plot3, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
-
-ldmc_aov <- aov(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment)
-
-dredge(ldmc_aov)
-simulateResiduals(ldmc_aov, plot = T)
-shapiro.test(residuals(ldmc_aov))
-
-summary(ldmc_aov)
-tukey_LA <- TukeyHSD(ldmc_aov)
-TukeyHSD(ldmc_aov)
-
-### Comparison Tables
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Treatment") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_LDMC_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ climate))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Climate") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_LDMC_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-```
 #### d. Seed mass CWM
 
 - same trend observed across climates
@@ -527,73 +307,7 @@ plot(emmeans(log_seed_mass, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_seed_mass, ~ treatment), alpha = 0.05, Letters = LETTERS)
 
 ```
-##### i. EMM graph
-```{r}
-seed_mass_emmeans <- emmeans(log_seed_mass, ~ treatment | climate)
 
-as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ climate + treatment))$contrasts) %>% 
-  filter(p.value <= 0.05)
-
-plot4 <- emm_plot(seed_mass_emmeans) +
-  # adding title
-  labs(title = "Seed Mass (log) CWM") +
-   # adding significance of comparisons
-  # Arid-Open - Arid-Total
-  geom_signif(annotation = "**",
-    y_position = -.2, xmin = 1, xmax = 3,
-    tip_length = c(.3, .025)) +
-  # Int-Open - Int-Total
-  geom_signif(annotation = "**",
-    y_position = 0, xmin = 4, xmax = 6,
-    tip_length = c(.35, .05)) +
-  # Mesic-Open - Mesic-Total
-   geom_signif(annotation = "**",
-    y_position = -.6, xmin = 7, xmax = 9,
-    tip_length = c(.3, .05))
-  
-plot4
-  
-ggsave("seed_mass_CWM_emmean.png", plot = plot4, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
-
-### Comparison Tables
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ treatment))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Treatment") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_seed_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ climate))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Climate") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_seed_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-```
 #### e. Leaf-N CWM
 
 - No difference between any of the different herbivore treatments within climates
@@ -648,61 +362,6 @@ emmeans(log_n_CWM, pairwise ~ climate + treatment)
 
 plot(emmeans(log_n_CWM, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
-```
-##### i. EMM graph
-```{r}
-n_emmeans <- emmeans(log_n_CWM, ~ treatment | climate)
-
-as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
-  filter(p.value <= 0.05)
-
-plot5 <- emm_plot(n_emmeans) +
-  # adding title
-  labs(title = "Leaf Nitrogen Concentration (log) CWM")
-   # adding significance of comparisons
-
-plot5
-  
-ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
-
-### Comparison Tables
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ treatment))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Treatment") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_LNC_by_treatment.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
-la_emmeans_clim <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate))$contrasts) %>% 
-  dplyr::select(contrast, estimate, p.value)
-
-pretty_table <- la_emmeans_clim %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast") %>% 
-  tab_header(
-    title = "Comparisons by Climate") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
-
-gtsave(data = pretty_table, filename = "CWM_LNC_by_climate.png", path = "~/github/Tejon_Functional_Traits/Figures")
-
 ```
 
 #### f. Best-fit Model Table
@@ -828,148 +487,11 @@ cwm_aic_sup <- dredge_table %>%
   ) %>% 
   cols_align(align = "center")
 
-
-# cwm_aic_sup
-
-gtsave(data = cwm_aic_sup, filename = "CWM_AIC_Supplement.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# gtsave(data = cwm_aic_sup, filename = "CWM_AIC_Supplement.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
-#### h. EMM Graphs
-
-```{r}
-# arrow_colors <- (rep(c("red", "orange", "blue"), 3))
-
-# making a function
-# emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
-#   
-#   if (Climate == TRUE && Treatment == TRUE) return({
-#     
-#     plot(emmeans(model, ~treatment | climate ),
-#          CIs = FALSE,
-#          type = "response",
-#          comparisons = TRUE,
-#          colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-#       labs(x = "EMM", y = "Climate") +
-#       facet_grid(. ~climate) +
-#       aes(fill = as.factor(treatment)) +
-#       geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       coord_flip() +
-#       geom_point(aes_(fill = "black"))+
-#       theme_bw() +
-#       theme(legend.position = "none")
-# 
-#     })
-#   
-#   if (Climate == TRUE && Treatment == FALSE) return({
-#     
-#     plot(emmeans(model, ~climate),
-#          CIs = FALSE,
-#          type = "response",
-#          comparisons = TRUE,
-#          colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-#       labs(x = "EMM", y = "Climate") +
-#       facet_grid(. ~climate) +
-#       aes(fill = as.factor(treatment)) +
-#       geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       coord_flip() +
-#       geom_point(aes_(fill = "black"))+
-#       theme_bw() +
-#       theme(legend.position = "none")
-# 
-#     })
-#   
-#   if (Climate == FALSE && Treatment == TRUE) return({
-#     
-#     plot(emmeans(model, ~treatment),
-#          CIs = FALSE,
-#          type = "response",
-#          comparisons = TRUE,
-#          colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-#       labs(x = "EMM", y = "Climate") +
-#       facet_grid(. ~climate) +
-#       aes(fill = as.factor(treatment)) +
-#       geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#       coord_flip() +
-#       geom_point(aes_(fill = "black"))+
-#       theme_bw() +
-#       theme(legend.position = "none")
-# 
-#     })
-#   
-#   if (Climate == FALSE && Treatment == FALSE) return({
-#     print("no inputs")
-#     })
-# }
-
-# plot(emmeans(LA_CWM, ~ treatment | climate),
-#      CIs = FALSE,
-#      type = "response",
-#      comparisons = TRUE,
-#     colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-#   labs(x = "EMM", y = "Climate") +
-#   facet_grid(. ~climate) +
-#   aes(fill = as.factor(treatment)) +
-#   geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#   geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
-#                arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
-#                color = arrow_colors) +
-#   coord_flip() +
-#   geom_point(aes_(fill = "black"))+
-#   theme_bw() +
-#   theme(legend.position = "none")
-
-# la_emm <- emmeans(LA_CWM, ~ climate)
-# la_emm <- emmeans(LA_CWM, ~ treatment)
-# la_emm <- emmeans(LA_CWM, ~ treatment * climate)
-# la_cdf <- multcomp::cld(la_emm, level = 0.05, Letters = LETTERS)
-# plot(emmeans(LA_CWM, ~ treatment * climate), comparisons = TRUE)
-
-# # Leaf Area
-# plot1 <- emm_plot(model = LA_CWM, Climate = TRUE, Treatment = TRUE) +
-#   labs(title = "Leaf Area CWM")
-# plot1
-# 
-# # SLA
-# plot2 <- emm_plot(model = SLA_CWM) +
-#   labs(title = "Specific Leaf Area CWM")
-# 
-# # LDMC
-# plot3 <- emm_plot(model = LDMC_CWM) +
-#   labs(title = "Leaf Dry Matter Content CWM")
-# 
-# # Seed Mass
-# plot4 <- emm_plot(model = log_seed_mass) +
-#   labs(title = "Seed Mass (log) CWM")
-# 
-# # LNC
-# plot5 <- emm_plot(model = log_n_CWM) +
-#   labs(title = "Leaf Nitrogen Content (log) CWM")
-
-# CWM_emmeans_all <- grid.arrange(plot1, plot2, plot3, plot4, plot5, ncol = 2)
-# 
-# ggsave("CWM_emmeans_3.png", plot = CWM_emmeans_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
-
-```
-
-#### i. testing model summary package
+#### h. testing model summary package
 
 ```{r}
 library(modelsummary)

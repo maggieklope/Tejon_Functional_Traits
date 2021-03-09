@@ -1,0 +1,278 @@
+---
+title: "CWM_emm_graphs"
+author: "Maggie Klope"
+date: "3/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Without significance
+
+```{r}
+arrow_colors <- (rep(c("red", "orange", "blue"), 3))
+
+# making a function
+emm_plot <- function(model, Climate = TRUE, Treatment = TRUE) {
+
+  if (Climate == TRUE && Treatment == TRUE) return({
+
+    plot(emmeans(model, ~treatment | climate ),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
+      theme_bw() +
+      theme(legend.position = "none")
+
+    })
+
+  if (Climate == TRUE && Treatment == FALSE) return({
+
+    plot(emmeans(model, ~climate),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
+      theme_bw() +
+      theme(legend.position = "none")
+
+    })
+
+  if (Climate == FALSE && Treatment == TRUE) return({
+
+    plot(emmeans(model, ~treatment),
+         CIs = FALSE,
+         type = "response",
+         comparisons = TRUE,
+         colors = c("black", "black", "blue", "red")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+      labs(x = "EMM", y = "Climate") +
+      facet_grid(. ~climate) +
+      aes(fill = as.factor(treatment)) +
+      geom_segment(aes_(x = ~the.emmean, xend = ~lcmpl, y = ~pri.fac, yend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      geom_segment(ggplot2::aes_(x = ~the.emmean, xend = ~rcmpl, y = ~pri.fac, yend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+      coord_flip() +
+      geom_point(aes_(fill = "black"))+
+      theme_bw() +
+      theme(legend.position = "none")
+
+    })
+
+  if (Climate == FALSE && Treatment == FALSE) return({
+    print("no inputs")
+    })
+}
+
+# Leaf Area
+plot1 <- emm_plot(model = LA_CWM, Climate = TRUE, Treatment = TRUE) +
+  labs(title = "Leaf Area CWM")
+plot1
+
+# SLA
+plot2 <- emm_plot(model = SLA_CWM) +
+  labs(title = "Specific Leaf Area CWM")
+
+# LDMC
+plot3 <- emm_plot(model = LDMC_CWM) +
+  labs(title = "Leaf Dry Matter Content CWM")
+
+# Seed Mass
+plot4 <- emm_plot(model = log_seed_mass) +
+  labs(title = "Seed Mass (log) CWM")
+
+# LNC
+plot5 <- emm_plot(model = log_n_CWM) +
+  labs(title = "Leaf Nitrogen Content (log) CWM")
+
+CWM_emmeans_all <- grid.arrange(plot1, plot2, plot3, plot4, plot5, ncol = 2)
+
+# ggsave("CWM_emmeans_3.png", plot = CWM_emmeans_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
+
+```
+
+## With significance
+### function
+```{r}
+# color of arrows
+arrow_colors <- (rep(c("red", "orange", "blue"), 3))
+
+# significance caption
+symbol <- "\u2264"
+caption <- paste0(symbol, "0.05(*), ", symbol, "0.01()**, ", symbol, "0.001(***)")
+
+#function
+emm_plot <- function(emmeans) {
+  plot(emmeans, by = NULL, CIs = FALSE, comparisons = TRUE, horizontal = FALSE, colors = "darkgreen") +
+  # # facet_grid by climate, and remove empty values
+  # facet_grid(. ~climate, scales = "free", space = "free") +
+  labs(y = "EMM", x = "Climate") +
+  aes(fill = as.factor(treatment)) +
+  # changing color of comparison arrow lines
+  geom_segment(aes_(y = ~the.emmean, yend = ~lcmpl, x = ~pri.fac, xend = ~pri.fac), #copied from function's code on github
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+  geom_segment(ggplot2::aes_(y = ~the.emmean, yend = ~rcmpl, x = ~pri.fac, xend = ~pri.fac),
+               arrow = arrow(length = ggplot2::unit(.07, "inches"), type = "closed"),
+               color = arrow_colors) +
+  # changing color of point
+  geom_point(aes_(fill = "black")) +
+  # changing theme
+  theme_bw() +
+  # removing legend
+  theme(legend.position = "none") +
+  # changing x labels within facet_grid
+  scale_x_discrete(labels = c("Open", "Partial", "Total", "Open", "Partial", "Total", "Open", "Partial", "Total")) +
+  # transparent background
+  theme(panel.background = element_rect(fill = "transparent"), plot.background = element_rect(fill = "transparent", color = NA)) +
+  # adding footnote
+  labs(caption = caption)
+}
+
+```
+### leaf area
+```{r}
+plot1 <- emm_plot(la_emmeans)+
+  # adding title
+  labs(title = "Leaf Area CWM") +
+  
+  # adding significance of comparisons
+   # Arid-Open - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = 90, xmin = 1, xmax = 3,
+    tip_length = c(.75, .05)) +
+  
+  # Arid-Partial - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = 85, xmin = 2, xmax = 3,
+    tip_length = c(.5, .05))
+
+plot1
+
+# ggsave("LA_CWM_emmean.png", plot = plot1, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+```
+### sla
+```{r}
+sla_emmeans <- emmeans(SLA_CWM, ~ treatment | climate)
+
+as.data.frame(summary(emmeans(SLA_CWM, specs = pairwise ~ climate * treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
+plot2 <- emm_plot(sla_emmeans)+
+  # adding title
+  labs(title = "Specific Leaf Area CWM") +
+  
+  # adding significance of comparisons
+    # Arid-Open - Arid-Total
+  geom_signif(annotation = "***",
+    y_position = 4.3, xmin = 1, xmax = 3,
+    tip_length = c(.4, .025)) +
+  
+    # Arid-Partial - Arid-Total
+   geom_signif(annotation = "***",
+    y_position = 4.1, xmin = 2, xmax = 3,
+    tip_length = c(.7, .05))
+
+plot2
+
+# ggsave("SLA_CWM_emmean.png", plot = plot2, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+```
+### ldmc
+```{r}
+ldmc_emmeans <- emmeans(LDMC_CWM, ~ treatment | climate)
+
+as.data.frame(summary(emmeans(LDMC_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
+plot3 <- emm_plot(ldmc_emmeans) +
+  # adding title
+  labs(title = "Leaf Dry Matter Content CWM") +
+  # adding significance of comparisons
+  # Arid-Partial - Arid-Total
+  geom_signif(annotation = "**",
+    y_position = 42, xmin = 2, xmax = 3,
+    tip_length = c(.25, .02)) +
+  # Int-Partial - Int-Total
+  geom_signif(annotation = "**",
+    y_position = 55, xmin = 5, xmax = 6,
+    tip_length = c(.5, .1)) +
+  # Mesic-Partial - Mesic-Total
+   geom_signif(annotation = "**",
+    y_position = 40, xmin = 8, xmax = 9,
+    tip_length = c(.25, .05))
+
+plot3
+
+# ggsave("LDMC_CWM_emmean.png", plot = plot3, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+```
+### seed mass
+```{r}
+seed_mass_emmeans <- emmeans(log_seed_mass, ~ treatment | climate)
+
+as.data.frame(summary(emmeans(log_seed_mass, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
+plot4 <- emm_plot(seed_mass_emmeans) +
+  # adding title
+  labs(title = "Seed Mass (log) CWM") +
+   # adding significance of comparisons
+  # Arid-Open - Arid-Total
+  geom_signif(annotation = "**",
+    y_position = -.2, xmin = 1, xmax = 3,
+    tip_length = c(.3, .025)) +
+  # Int-Open - Int-Total
+  geom_signif(annotation = "**",
+    y_position = 0, xmin = 4, xmax = 6,
+    tip_length = c(.35, .05)) +
+  # Mesic-Open - Mesic-Total
+   geom_signif(annotation = "**",
+    y_position = -.6, xmin = 7, xmax = 9,
+    tip_length = c(.3, .05))
+  
+plot4
+  
+# ggsave("seed_mass_CWM_emmean.png", plot = plot4, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+```
+### leaf n
+```{r}
+n_emmeans <- emmeans(log_n_CWM, ~ treatment | climate)
+
+as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+  filter(p.value <= 0.05)
+
+plot5 <- emm_plot(n_emmeans) +
+  # adding title
+  labs(title = "Leaf Nitrogen Concentration (log) CWM")
+   # adding significance of comparisons
+
+plot5
+  
+# ggsave("leaf_n_CWM_emmean.png", plot = plot5, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+```
