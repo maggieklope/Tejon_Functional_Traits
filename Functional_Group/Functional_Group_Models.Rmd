@@ -160,10 +160,13 @@ funct_la <- glm(data = cwm_functional, log_plus_la ~ climate + treatment + funct
 simulateResiduals(funct_la, plot= T) #good
 shapiro.test(residuals(funct_la)) #residuals are normal
 
-emmeans(funct_la, pairwise ~ climate | treatment | functional_group)
+emmeans(funct_la, pairwise ~ climate)
+emmeans(funct_la, pairwise ~ treatment)
+emmeans(funct_la, pairwise ~ functional_group)
+
 emmeans(funct_la, pairwise ~ treatment | functional_group)
 emmeans(funct_la, pairwise ~ climate | functional_group)
-emmeans(funct_la, pairwise ~ treatment)
+
 # 
 # LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
 #   separate(contrast, c("A", "B"), sep = " - ") %>%
@@ -219,9 +222,12 @@ funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_grou
 simulateResiduals(funct_sla, plot= T) #good
 shapiro.test(residuals(funct_sla)) #normal
 
-# emmeans(funct_sla, pairwise ~ climate | treatment | functional_group)
-# emmeans(funct_sla, pairwise ~ treatment | functional_group)
-# emmeans(funct_sla, pairwise ~ functional_group)
+emmeans(funct_sla, pairwise ~ functional_group)
+emmeans(funct_sla, pairwise ~ climate)
+emmeans(funct_sla, pairwise ~ treatment)
+
+emmeans(funct_sla, pairwise ~ treatment | functional_group)
+emmeans(funct_sla, pairwise ~ climate | functional_group)
 
 ```
 ##### ldmc
@@ -244,9 +250,12 @@ funct_ldmc <- glm(data = cwm_functional, log_ldmc ~ climate + functional_group +
 simulateResiduals(funct_ldmc, plot= T) # ok
 shapiro.test(residuals(funct_ldmc)) # normal
 
-# emmeans(funct_ldmc, pairwise ~ climate | treatment | functional_group)
-# emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
-# emmeans(funct_ldmc, pairwise ~ functional_group)
+emmeans(funct_ldmc, pairwise ~ climate)
+emmeans(funct_ldmc, pairwise ~ treatment)
+
+emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
+emmeans(funct_ldmc, pairwise ~ climate | functional_group)
+
 ```
 ##### lnc
 ```{r}
@@ -272,14 +281,16 @@ cwm_functional <- cwm_functional %>%
 # trying log(n+1) transformation with gaussian
 funct_n <- glm(data = cwm_functional, log_plus_n ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
 dredge(funct_n)
-funct_n <- glm(data = cwm_functional, log_plus_n ~ climate + functional_group + treatment + climate:functional_group, na.action = na.fail)
+funct_n <- glm(data = cwm_functional, log_plus_n ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
 
 simulateResiduals(funct_n, plot= T) # looks ok
 shapiro.test(residuals(funct_n)) # normal
 
-# emmeans(funct_n, pairwise ~ climate | treatment | functional_group)
+# emmeans(funct_n, pairwise ~ climate)
+# emmeans(funct_n, pairwise ~ treatment)
+
 # emmeans(funct_n, pairwise ~ treatment | functional_group)
-# emmeans(funct_n, pairwise ~ functional_group)
+# emmeans(funct_n, pairwise ~ climate | functional_group)
 
 ```
 ##### seed mass
@@ -432,6 +443,7 @@ dredge_table <- dredge_funct_la %>%
 
 funct_cwm_aic_sup <- dredge_table %>% 
   as_tibble() %>% 
+  dplyr::group_by(CWM) %>%
   gt() %>% 
   tab_header(
     title = "Functional Group CWM Best-Fit Models"
@@ -446,7 +458,20 @@ funct_cwm_aic_sup <- dredge_table %>%
   ) %>% 
   tab_source_note(
     source_note = "x indicates selection of fixed effect term for best-fit model"
-  )
+  ) %>%
+  cols_align(align = "center") %>%
+  tab_style(
+      style = cell_borders(
+        sides = c("left", "right"),
+        color = "#BBBBBB",
+        weight = px(1.5),
+        style = "solid"
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = everything()
+      )
+    )
 
 # funct_cwm_aic_sup
 
@@ -592,27 +617,164 @@ funct_la_plot
 ```{r}
 ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
+# First try
 funct_la_plot <- plot(ggpredict(funct_la, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors, facet = TRUE)
 funct_sla_plot <- plot(ggpredict(funct_sla, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_ldmc_plot <- plot(ggpredict(funct_ldmc, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_n_plot <- plot(ggpredict(funct_n, terms = c("treatment", "climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
 funct_seed_mass_plot <- plot(ggpredict(funct_seed_mass, terms = c("climate", "functional_group")), colors = ggeffects_colors,facet = TRUE)
-
 funct_group_CWM_emmeans <- grid.arrange(funct_la_plot, funct_sla_plot, funct_ldmc_plot, funct_n_plot, funct_seed_mass_plot)
 
-ggsave("funct_group_CWM_emmeans.png", plot = funct_group_CWM_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 10)
+# ggsave("funct_group_CWM_emmeans.png", plot = funct_group_CWM_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 10)
+
+# adding significance
+# creating a function
+funct_graph <- function(model, model_terms, title, y_lab, x_lab){
+  
+  predict <- ggpredict(model, terms = model_terms)
+  test <- as.data.frame(predict)
+  
+  ggplot(test, aes(facet, predicted, color = x)) +
+  geom_point(position = position_dodge(width=0.5)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), 
+                width = .25, 
+                size = .75,
+                position = position_dodge(width=0.5))+
+  scale_color_manual(values = ggeffects_colors) +
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20')
+  ) +
+  labs(title = title, y = y_lab, x = x_lab) +
+  facet_grid(~ group)
+}
+
+# leaf area
+# making annotation files
+anno <- as.data.frame(summary(emmeans(funct_la, specs = pairwise ~ climate + treatment + functional_group))$contrasts) %>%
+  filter(p.value <= 0.05) %>% 
+  separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>% 
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment", "plot_1_funct_group"), sep = ",") %>% 
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment", "plot_2_funct_group"), sep = ",") %>% 
+  filter(plot_1_funct_group == plot_2_funct_group & plot_1_climate == plot_2_climate) %>% 
+  rename(group = plot_2_funct_group, start = plot_1_treatment, end = plot_2_treatment, climate = plot_1_climate) %>%
+  mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>% 
+  dplyr::select(group, start, end, label, climate)
+
+arid_anno <- anno %>% 
+  filter(climate == "Arid")
+int_anno <- anno %>% 
+  filter(climate == "Intermediate")
+mesic_anno <- anno %>% 
+  filter(climate == "Mesic")
+
+funct_graph(model = funct_la, 
+            model_terms = c("climate", "functional_group", "treatment"),
+            title = "Leaf Area CWM by Functional Group",
+            y_lab = "Predicted log(CWM Leaf Area + 1)",
+            x_lab = "Herbivore Treatment") +
+  geom_signif(
+        data = arid_anno,
+        aes(xmin = start, xmax = end, annotations = label, y_position = 4.25),
+        color = "#f46d43",
+      manual = TRUE) +
+  geom_signif(
+    data = int_anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = 4.5),
+    color = "#fee090",
+    manual = TRUE) +
+  geom_signif(
+    data = mesic_anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = 4.75),
+    color = "#74add1",
+    manual = TRUE)
+
+# specific leaf area
+# anno <- as.data.frame(summary(emmeans(funct_sla, specs = pairwise ~ climate + treatment + functional_group))$contrasts) %>%
+#   filter(p.value <= 0.05) %>% 
+#   separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>% 
+#   separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment", "plot_1_funct_group"), sep = ",") %>% 
+#   separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment", "plot_2_funct_group"), sep = ",") %>% 
+#   filter(plot_1_funct_group == plot_2_funct_group & plot_1_climate == plot_2_climate) %>% 
+#   rename(group = plot_2_funct_group, start = plot_1_treatment, end = plot_2_treatment, climate = plot_1_climate) %>%
+#   mutate(label = ifelse(p.value > .05, "*",
+#                         ifelse(p.value <= 0.01, "**",
+#                                ifelse(p.value <= 0.001, "***", "****")))) %>% 
+#   dplyr::select(group, start, end, label, climate)
+
+funct_graph(model = funct_sla, 
+            model_terms = c("climate", "functional_group", "treatment"),
+            title = "Specific Leaf Area CWM by Functional Group",
+            y_lab = "Predicted log(CWM Specific Leaf Area + 1)",
+            x_lab = "Herbivore Treatment")
+
+# ldmc
+anno <- as.data.frame(summary(emmeans(funct_ldmc, specs = pairwise ~ climate + treatment + functional_group))$contrasts) %>%
+  filter(p.value <= 0.05) %>%
+  separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment", "plot_1_funct_group"), sep = ",") %>%
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment", "plot_2_funct_group"), sep = ",") %>%
+  filter(plot_1_funct_group == plot_2_funct_group & plot_1_climate == plot_2_climate) %>%
+  rename(group = plot_2_funct_group, start = plot_1_treatment, end = plot_2_treatment, climate = plot_1_climate) %>%
+  mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>%
+  dplyr::select(group, start, end, label, climate)
+anno
+
+arid_anno <- anno %>% 
+  filter(climate == "Arid")
+int_anno <- anno %>% 
+  filter(climate == "Intermediate")
+mesic_anno <- anno %>% 
+  filter(climate == "Mesic")
+
+funct_graph(model = funct_ldmc, 
+            model_terms = c("climate", "functional_group", "treatment"),
+            title = "Leaf Dry Matter Content CWM by Functional Group",
+            y_lab = "Predicted log(CWM Leaf Dry Matter Content)",
+            x_lab = "Herbivore Treatment") +
+  geom_signif(
+        data = arid_anno,
+        aes(xmin = start, xmax = end, annotations = label, y_position = 4.25),
+        color = "#f46d43",
+      manual = TRUE) +
+  geom_signif(
+    data = int_anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = 4.5),
+    color = "#fee090",
+    manual = TRUE) +
+  geom_signif(
+    data = mesic_anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = 4.75),
+    color = "#74add1",
+    manual = TRUE)
+
+
+
 
 ```
 
-#### using sjPlot
+#### sjPlot [NOT USING]
 ```{r}
-library(sjPlot)
-
-plot_model(funct_la, type = "emm", terms = c("climate", "treatment", "functional_group"))
-
-plot_model(funct_sla, type = "emm", terms = c("climate", "treatment", "functional_group"))
+# library(sjPlot)
+# 
+# plot_model(funct_la, type = "emm", terms = c("climate", "treatment", "functional_group"))
+# 
+# plot_model(funct_sla, type = "emm", terms = c("climate", "treatment", "functional_group"))
 ```
-#### Individual Models:
+#### Individual Models: [NOT USING]
 #### a. grasses:
 ##### i. leaf area
 ```{r}
