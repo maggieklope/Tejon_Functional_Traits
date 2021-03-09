@@ -1,0 +1,165 @@
+---
+title: "AIC_Supplement_Table"
+author: "Maggie Klope"
+date: "3/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(DHARMa)
+library(MuMIn)
+library(gt)
+
+```
+
+# Community-Weighted Means
+```{r}
+dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
+  mutate(CWM = "Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
+  mutate(CWM = "Specific Leaf Area") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
+  mutate(CWM = "Leaf Dry Matter Content") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
+  mutate(CWM = "Seed Mass (log)") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log)") %>%
+  dplyr::select(CWM, climate, treatment, AICc)
+
+dredge_table_CWM <- dredge_LA %>% 
+  full_join(dredge_SLA) %>% 
+  full_join(dredge_LDMC) %>% 
+  full_join(dredge_log_seed_mass) %>% 
+  full_join(dredge_log_n) %>% 
+  mutate(climate = str_replace(climate, "\\+","Climate")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","Treatment")) %>% 
+  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","Climate:Treatment")) %>% 
+  tidyr::unite("Model", climate:"climate:treatment", sep = " + ", remove = TRUE, na.rm = TRUE) %>% 
+  mutate(Model = ifelse(Model == "", "Intercept", Model)) %>% 
+  mutate(Analysis = "CWMs") %>% 
+  dplyr::rename("AIC" = AICc) %>% 
+  dplyr::rename("Response Variable" = CWM) %>% 
+  select(Analysis, "Response Variable", Model, AIC)
+
+dredge_table_CWM
+
+```
+
+# Functional Diveristy
+```{r}
+dredge_FRic <- as.data.frame(dredge(FRic)) %>%
+  mutate(CWM = "FRic") %>% 
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_FEve <- as.data.frame(dredge(FEve)) %>%
+  mutate(CWM = "FEve") %>%
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
+  mutate(CWM = "FDiv") %>%
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_FDis <- as.data.frame(dredge(FDis)) %>%
+  mutate(CWM = "FDis") %>%
+  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+
+dredge_table_FD <- dredge_FRic %>% 
+  full_join(dredge_FEve) %>% 
+  full_join(dredge_FDiv) %>% 
+  full_join(dredge_FDis) %>% 
+  mutate(climate = str_replace(climate, "\\+","Climate")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","Treatment")) %>% 
+  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","Climate:Treatment")) %>% 
+  tidyr::unite("Model", climate:"climate:treatment", sep = " + ", remove = TRUE, na.rm = TRUE) %>% 
+  mutate(Model = ifelse(Model == "", "Intercept", Model)) %>% 
+  mutate(Analysis = "Functional Diversity") %>% 
+  dplyr::rename("AIC" = AICc) %>% 
+  dplyr::rename("Response Variable" = CWM) %>%
+  select(Analysis, "Response Variable", Model, AIC)
+
+dredge_table_FD
+
+```
+
+# Functional Group
+```{r}
+dredge_funct_la <- as.data.frame(dredge(funct_la)) %>%
+  mutate(CWM = "Leaf Area (log(x+1))") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", "climate:functional_group", AICc)
+
+dredge_funct_sla <-  as.data.frame(dredge(funct_sla)) %>% 
+  mutate(CWM = "Specific Leaf Area (log(x+1)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
+
+dredge_funct_ldmc <- as.data.frame(dredge(funct_ldmc)) %>% 
+  mutate(CWM = "Leaf Dry Matter Content (log)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", AICc)
+
+dredge_funct_seed_mass <- as.data.frame(dredge(funct_seed_mass)) %>% 
+  mutate(CWM = "Seed Mass (log)") %>% 
+  dplyr::select(CWM, climate, functional_group, "climate:functional_group", AICc)
+
+dredge_funct_n <- as.data.frame(dredge(funct_n)) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log(x+1)") %>% 
+  dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
+
+dredge_table_funct_group <- dredge_funct_la %>% 
+  full_join(dredge_funct_sla) %>% 
+  full_join(dredge_funct_ldmc) %>% 
+  full_join(dredge_funct_seed_mass) %>% 
+  full_join(dredge_funct_n) %>% 
+  mutate(climate = str_replace(climate, "\\+","Climate")) %>%
+  mutate(treatment = str_replace(treatment, "\\+","Treatment")) %>% 
+  mutate(functional_group = str_replace(functional_group, "\\+","Functional Group")) %>%
+  # mutate(`climate:treatment` = NA) %>% 
+  mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","Climate:Functional Group")) %>%
+  mutate(`functional_group:treatment` = str_replace(`functional_group:treatment`, "\\+","Functional Group")) %>% 
+  mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","Climate:Functional Group")) %>% 
+  tidyr::unite("Model", climate:"functional_group:treatment", sep = " + ", remove = TRUE, na.rm = TRUE) %>% 
+  mutate(Model = ifelse(Model == "", "Intercept", Model)) %>% 
+  mutate(Analysis = "Functional Group CWM", remove = TRUE) %>%
+  dplyr::rename("AIC" = AICc) %>% 
+  dplyr::rename("Response Variable" = CWM) %>% 
+  select(Analysis, "Response Variable", Model, AIC)
+
+dredge_table_funct_group
+
+```
+
+```{r}
+# merging them all together
+complete_table <- dredge_table_CWM %>% 
+  full_join(dredge_table_FD) %>% 
+  full_join(dredge_table_funct_group)
+complete_table 
+
+aic_sup <- complete_table %>% 
+  as_tibble() %>% 
+  dplyr::group_by(Analysis) %>%
+  gt() %>% 
+  tab_header(
+    title = "Models and AIC Values"
+  ) %>% 
+  tab_source_note(
+    source_note = "x indicates selection of fixed effect term for best-fit model"
+  )
+
+aic_sup
+
+
+gtsave(data = aic_sup, filename = "AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
+
+```
+
