@@ -122,18 +122,17 @@ emmeans(LA_CWM, pairwise ~ climate * treatment)
 
 # plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
 
-plot(emmeans(LA_CWM, ~ climate * treatment), 
-     type = "response", 
-     comparisons = TRUE, # If arrows overlap, they are not statistically significant
-     colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-  # this is a ggplot so you can customize as normal
-  theme_bw() +   
-  labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
+# plot(emmeans(LA_CWM, ~ climate * treatment), 
+#      type = "response", 
+#      comparisons = TRUE, # If arrows overlap, they are not statistically significant
+#      colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
+#   # this is a ggplot so you can customize as normal
+#   theme_bw() +   
+#   labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
 
 #Compact Letter Display
 la_emm <- emmeans(LA_CWM, ~ climate)
 la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
-
 
 pretty_table <- la_data_1 %>% 
   as_tibble() %>% 
@@ -147,6 +146,8 @@ pretty_table <- la_data_1 %>%
       columns = vars(p.value),
       rows = p.value <= 0.05)
   )
+
+plot_model(LA_CWM)
 
 ```
 ##### i. EMM graph
@@ -240,6 +241,7 @@ shapiro.test(residuals(LA_aov))
 summary(LA_aov)
 tukey_LA <- TukeyHSD(LA_aov)
 TukeyHSD(LA_aov)
+
 
 ```
 
@@ -807,23 +809,27 @@ dredge_table <- dredge_LA %>%
 
 cwm_aic_sup <- dredge_table %>% 
   as_tibble() %>% 
+  dplyr::group_by(CWM) %>%
   gt() %>% 
+  tab_spanner_delim(delim = ".") %>% 
   tab_header(
     title = "CWM Models"
-  ) %>% 
+  ) %>%
   tab_spanner(
     label = "Fixed Effects Terms",
     columns = vars(climate, treatment, "climate:treatment")
-  ) %>% 
+  ) %>%
   fmt_missing(
     columns = vars(climate, treatment, "climate:treatment"),
     missing_text = " "
-  ) %>% 
+  ) %>%
   tab_source_note(
     source_note = "x indicates selection of fixed effect term for best-fit model"
-  )
+  ) %>% 
+  cols_align(align = "center")
 
-cwm_aic_sup
+
+# cwm_aic_sup
 
 gtsave(data = cwm_aic_sup, filename = "CWM_AIC_Supplement.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
