@@ -87,7 +87,7 @@ ggplot(test, aes(x, predicted, color = group)) +
     manual = TRUE) +
   facet_grid(~group)
 ```
-
+## writing the function
 ```{r}
 # making function that uses ggpredict to plot model results with geom_signif to show differences in significance
 
@@ -131,58 +131,113 @@ graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 2
     strip.background = element_rect(fill = "gray85"),
     strip.text = element_text(colour = 'gray20')
   ) +
-  labs(title = plot_title, y = y_label, x = "Herbivore Treatment") +
-  geom_signif(
-    data = anno,
-    aes(xmin = start, xmax = end, annotations = label, y_position = y_positions),
-    color = "black",
-    manual = TRUE) +
-  facet_grid(~group)
+    labs(title = plot_title, y = y_label, x = "Herbivore Treatment") +
+    geom_signif(
+      data = anno,
+      aes(xmin = start, xmax = end, annotations = label, y_position = y_positions),
+      color = "black",
+      manual = TRUE) +
+    facet_grid(~group)+
+    theme(legend.position = "none")
 }
 
 ```
 
 ### b. Leaf Area
 ```{r}
-graphs(model_name = LA_CWM,
+la <- graphs(model_name = LA_CWM,
        model_terms = c("treatment", "climate"),
        plot_title = "Leaf Area CWM",
        y_label = "Predicted Leaf Area CWM",
        y_positions = c(90, 98))
+
+la
 ```
 
 ### c. Specific Leaf Area
 ```{r}
-graphs(model_name = SLA_CWM,
+sla <- graphs(model_name = SLA_CWM,
        model_terms = c("treatment", "climate"),
        plot_title = "Specific Leaf Area CWM",
        y_label = "Predicted Specific Leaf Area CWM",
        y_positions = c(4.5, 5))
+
+sla
 ```
 
 ### d. Leaf Dry Matter Content
 ```{r}
-graphs(model_name = LDMC_CWM,
+ldmc <- graphs(model_name = LDMC_CWM,
        model_terms = c("treatment", "climate"),
        plot_title = "Leaf Dry Matter Content CWM",
        y_label = "Predicted Leaf Dry Matter Content CWM",
        y_positions = c(50, 60, 45))
+
+ldmc
 ```
 
 ### e. Seed Mass
 ```{r}
-graphs(model_name = log_seed_mass,
+seed_mass <- graphs(model_name = log_seed_mass,
        model_terms = c("treatment", "climate"),
        plot_title = "Seed Mass CWM",
        y_label = "Predicted log(Seed Mass CWM)",
        y_positions = c(0, .25, -.5))
+
+seed_mass
 ```
 
 ### f. Leaf N
 ```{r}
-graphs(model_name = log_n_CWM,
-       model_terms = c("treatment", "climate"),
-       plot_title = "Leaf Nitrogen Concentration CWM",
-       y_label = "Predicted log(Leaf Nitrogen Concentration CWM)")
+
+# no significant difference, so doing manually
+
+predict <- ggpredict(log_n_CWM, terms = c("treatment", "climate"))
+test <- as.data.frame(predict)
+
+anno <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>%
+  filter(p.value <= 0.05) %>%
+  separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>%
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>%
+  filter(plot_1_climate == plot_2_climate) %>%
+  rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
+  mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>%
+  dplyr::select(group, start, end, label)
+
+leaf_n <- ggplot(test, aes(x, predicted, color = group)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = .25, size = .75) +
+  scale_color_manual(values = ggeffects_colors) +
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20')
+  ) +
+  labs(title = "Leaf Nitrogen Content CWM", y = "Predicted log(Leaf Nitrogen Content CWM)", x = "Herbivore Treatment") +
+  facet_grid(~group)+
+    theme(legend.position = "none")
+
+
+```
+
+### g. merging & saving
+```{r}
+
+CWM_signif_all <- grid.arrange(la, sla, ldmc, seed_mass, leaf_n)
+CWM_signif_all
+
+ggsave("CWM_signif_all.png", plot = CWM_signif_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
+
 ```
 
