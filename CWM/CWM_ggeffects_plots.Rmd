@@ -27,7 +27,7 @@ library(ggsignif)
 library(ggeffects)
 ```
 
-## Basic Plots
+## 1. Basic Plots
 ```{r}
 ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
 
@@ -42,4 +42,147 @@ CWM_emmeans <- grid.arrange(LA_CWM_plot, SLA_CWM_plot, LDMC_CWM_plot, log_seed_m
 # ggsave("CWM_emmeans.png", plot = CWM_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 10)
 ```
 
+## 2. adding significance bars with ggsignif
+
+### a. testing
+```{r}
+# testing
+predict <- ggpredict(LA_CWM, terms = c("treatment", "climate"))
+test <- as.data.frame(predict)
+
+anno <- as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>%
+  filter(p.value <= 0.05) %>%
+  separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>%
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>%
+  filter(plot_1_climate == plot_2_climate) %>%
+  rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
+  mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>%
+  dplyr::select(group, start, end, label)
+
+ggplot(test, aes(x, predicted, color = group)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = .25, size = .75) +
+  scale_color_manual(values = ggeffects_colors) +
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20')
+  ) +
+  labs(title = "Title", y = "unit", x = "Herbivore Treatment") +
+  geom_signif(
+    data = anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = c(90, 97)),
+    color = "black",
+    manual = TRUE) +
+  facet_grid(~group)
+```
+
+```{r}
+# making function that uses ggpredict to plot model results with geom_signif to show differences in significance
+
+graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 20) {
+  # model_name ex: LDMC_CWM
+  # model_terms as a list ex: c("treatment", "climate")
+  # model_formula ex: "pairwise ~ climate * treatment"
+  
+  predict <- ggpredict(model_name, terms = model_terms)
+  test <- as.data.frame(predict)
+  
+  # creating annotation data frame that will be used by geom_signif to get around the facet_wrap() problem
+  anno <- as.data.frame(summary(emmeans(model_name, specs = pairwise ~ climate + treatment))$contrasts) %>% 
+    filter(p.value <= 0.05) %>% 
+    separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>% 
+    separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>% 
+    separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>% 
+    filter(plot_1_climate == plot_2_climate) %>% 
+    rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>% 
+    mutate(label = ifelse(p.value > .05, "*", 
+                          ifelse(p.value <= 0.01, "**",
+                                 ifelse(p.value <= 0.001, "***", "****")))) %>% 
+    dplyr::select(group, start, end, label)
+  
+  print(anno)
+  
+  ggplot(test, aes(x, predicted, color = group)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = .25, size = .75) +
+  scale_color_manual(values = ggeffects_colors) +
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20')
+  ) +
+  labs(title = plot_title, y = y_label, x = "Herbivore Treatment") +
+  geom_signif(
+    data = anno,
+    aes(xmin = start, xmax = end, annotations = label, y_position = y_positions),
+    color = "black",
+    manual = TRUE) +
+  facet_grid(~group)
+}
+
+```
+
+### b. Leaf Area
+```{r}
+graphs(model_name = LA_CWM,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Leaf Area CWM",
+       y_label = "Predicted Leaf Area CWM",
+       y_positions = c(90, 98))
+```
+
+### c. Specific Leaf Area
+```{r}
+graphs(model_name = SLA_CWM,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Specific Leaf Area CWM",
+       y_label = "Predicted Specific Leaf Area CWM",
+       y_positions = c(4.5, 5))
+```
+
+### d. Leaf Dry Matter Content
+```{r}
+graphs(model_name = LDMC_CWM,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Leaf Dry Matter Content CWM",
+       y_label = "Predicted Leaf Dry Matter Content CWM",
+       y_positions = c(50, 60, 45))
+```
+
+### e. Seed Mass
+```{r}
+graphs(model_name = log_seed_mass,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Seed Mass CWM",
+       y_label = "Predicted log(Seed Mass CWM)",
+       y_positions = c(0, .25, -.5))
+```
+
+### f. Leaf N
+```{r}
+graphs(model_name = log_n_CWM,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Leaf Nitrogen Concentration CWM",
+       y_label = "Predicted log(Leaf Nitrogen Concentration CWM)")
+```
 

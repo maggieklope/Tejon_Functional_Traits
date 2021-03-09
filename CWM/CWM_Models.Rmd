@@ -280,12 +280,12 @@ multcomp::cld(emmeans(LDMC_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
     - No difference between Arid and Mesic
 
 ```{r}
-seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
-seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+# seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+# dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
+# seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
-shapiro.test(residuals(seed_mass_CWM)) # not normal
+# simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
+# shapiro.test(residuals(seed_mass_CWM)) # not normal
 
 # log transformation
 log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
@@ -330,12 +330,12 @@ multcomp::cld(emmeans(log_seed_mass, ~ treatment), alpha = 0.05, Letters = LETTE
     - Int-Total > Mesic-Total
 
 ```{r} 
-leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
-dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
-
-simulateResiduals(leaf_n_CWM, plot= T) #looks bad
-shapiro.test(residuals(leaf_n_CWM)) #not normal
+# leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
+# dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
+# leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
+# 
+# simulateResiduals(leaf_n_CWM, plot= T) #looks bad
+# shapiro.test(residuals(leaf_n_CWM)) #not normal
 
 #log transformation
 log_n_CWM <- glm(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
