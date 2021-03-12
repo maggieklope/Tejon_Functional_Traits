@@ -29,7 +29,7 @@ library(ggeffects)
 
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
-cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_TraitsDatasheets/cwm_traits_updated.csv") %>% 
+cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
   mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
   mutate(weighted_sla = sla * Abundance) %>% 
@@ -362,6 +362,8 @@ emmeans(log_n_CWM, pairwise ~ climate + treatment)
 
 plot(emmeans(log_n_CWM, pairwise ~ treatment + climate))
 multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
+
+summary(lm(data = cwm_traits_adj, log_n ~ climate + treatment))
 ```
 
 #### f. Best-fit Model Table

@@ -23,18 +23,18 @@ library(emmeans) #post-hoc analyses
 
 # Loading 2019 abundance data calculated from transect surveys
 abund_2019 <-  read_csv("Datasheets/2019_abundance_sci_names.csv") %>% 
-  rename(species_name = Species) %>% #changing column names
-  rename(climate = Climate) %>% #changing column names
-  rename(treatment = Plot)#changing column names
+  rename(species_name = Species) %>% # changing column names
+  rename(climate = Climate) %>% # changing column names
+  rename(treatment = Plot)# changing column names
 
-abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate" #changing name of int climate
+abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate" # changing name of int climate
 
 # Loading 2019 functional trait data (currently only has LA)
 traits_19 <- read_csv("Datasheets/temp_2019_traits.csv") %>% 
-  rename(old_names = Species) %>% #changing column names
-  rename(Species = sci_name) %>% #changing column names
+  rename(old_names = Species) %>% # changing column names
+  rename(Species = sci_name) %>% # changing column names
   dplyr::select(Climate, Treatment, Block, Species, Species_2, LA, functional_group) %>% 
-  mutate(LA = as.numeric(LA)) %>% #making sure value is numeric
+  mutate(LA = as.numeric(LA)) %>% # making sure value is numeric
   mutate(Species = ifelse(Species == "Trifolium microcephalum", #fixing a typo that makes factors weird
                           "trifolium microcephalum",
                           Species)) %>%
@@ -111,6 +111,208 @@ cwm_traits_adj <-  read_csv("Datasheets/cwm_traits_updated.csv") %>%
 
 ```
 
+# Uploading New Data
+```{r}
+# read in data
+new_block_names <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/new_block_names.csv") %>% 
+  mutate(block = as.character(block))
+
+la_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/leaf_area_2019.csv") %>%
+  mutate(block = as.character(block)) %>% 
+  dplyr::select(climate, block, treatment, species, area) %>%
+  mutate(climate = ifelse(climate == "Aird", "Arid", climate)) %>% 
+  mutate(climate = ifelse(climate == "intermediate", "Intermediate", climate)) %>% 
+  mutate(species = ifelse(species == "Tridilea", "Triteleia ixioides", species)) %>% 
+  mutate(species = ifelse(species == "Cheatgrass" | species == "cheatgrass", "Bromus tectorum", species)) %>% 
+  mutate(species = ifelse(species == "Popcorn flower" | species == "popcorn flower", "Plagiobothrys nothofulvus", species)) %>% 
+  mutate(species = ifelse(species == "Foxtail", "Hordeum murium", species)) %>% 
+  mutate(species = ifelse(species == "Clover" | species == "Trifolium", "Trifolium microcephalum", species)) %>% 
+  mutate(species = ifelse(species == "Bedstraw" | species == "bedstraw" | species == "Bestraw" | species == "bestraw", "Galium aparine", species)) %>% 
+  mutate(species = ifelse(species == "J" | species == "Bromus hordeaceous", "Bromus hordeaceus", species)) %>% 
+  mutate(species = ifelse(species == "Erodium" | species == "erodium" | species == "Erodium circularium", "Erodium cicutarium", species)) %>% 
+  mutate(species = ifelse(species == "festuca myuros", "Festuca myuros", species)) %>% 
+  mutate(species = ifelse(species == "Gooseberry", "Ribes", species)) %>% 
+  mutate(species = ifelse(species == "Snowberry", "Symphoricarpos mollis", species)) %>% 
+  mutate(species = ifelse(species == "Rabbit Brush", "Ericameria nauseosa", species)) %>% 
+  mutate(species = ifelse(species == "Bromus Diandrus", "Bromus diandrus", species)) %>% 
+  mutate(treatment = ifelse(treatment == "Control"|
+                              treatment == "OPEN", "Open", treatment)) %>% 
+  mutate(treatment = ifelse(treatment == "Full"|
+                              treatment == "Tota", "Total", treatment)) %>% 
+  group_by(climate, block, treatment, species) %>% 
+  summarise_at(vars(area), .fun = sum) %>%
+   mutate(block = ifelse(block == "B1", "1", 
+                        ifelse(block == "B2", "2",
+                               ifelse(block == "B3", "3", block)))) %>%
+  left_join(new_block_names, by = c("climate", "block"))
+  
+# la_2019 %>% 
+#   group_by(climate, new_block, treatment, species) %>% 
+#   filter(n()>1)
+
+```
+
+```{r}
+dry_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/dry_weights_2019.csv") %>% 
+  mutate(climate = ifelse(climate == "M", "Mesic", 
+                          ifelse(climate == "Int", "Intermediate", climate))) %>% 
+  mutate(block = ifelse(block == "B1", "1", 
+                        ifelse(block == "B2", "2",
+                               ifelse(block == "B3", "3", block)))) %>%
+  mutate(block = as.character(block)) %>% 
+  left_join(new_block_names, by = c("climate", "block")) %>% 
+  mutate(species = ifelse(species == "Gooseberry", "Ribes", species)) %>% 
+  mutate(species = ifelse(species == "Bromus hord." |
+                            species == "Bromus hord" |
+                            species == "J-Bromus hordeaceus" |
+                            species == "J" |
+                            species == "Bromus hordeaceus J", "Bromus hordeaceus", species)) %>% 
+  mutate(species = ifelse(species == "Rabbit brush", "Ericameria nauseosa", species)) %>% 
+  mutate(species = ifelse(species == "Snowberry", "Symphoricarpos mollis", species)) %>% 
+  mutate(species = ifelse(species == "Tridilea", "Triteleia ixioides", species)) %>% 
+  mutate(species = ifelse(species == "Brodi", "Bromus diandrus", species)) %>% 
+  mutate(species = ifelse(species == "tectorum" |
+                            species == "Cheatgrass", "Bromus tectorum", species)) %>% 
+  mutate(species = ifelse(species == "Clover" | 
+                            species == "Trifolium" |
+                            species == "Clover-trifolium", "Trifolium microcephalum", species)) %>% 
+   mutate(species = ifelse(species == "Erodium" | 
+                             species == "Erodium c.", "Erodium cicutarium", species)) %>% 
+  mutate(species = ifelse(species == "Festuca m" |
+                            species == "Festuca", "Festuca myuros", species)) %>% 
+  mutate(species = ifelse(species == "Foxtail", "Hordeum murinum", species)) %>% 
+  mutate(species = ifelse(species == "Bedstraw", "Galium aparine", species)) %>% 
+  mutate(species = ifelse(species == "Popcorn flower", "Plagiobothrys nothofulvus", species)) %>% 
+  mutate(species = ifelse(species == "N/A", NA, species)) %>% 
+  mutate(treatment = ifelse(treatment == "open"|
+                              treatment == "control", "Open", treatment)) %>% 
+  mutate(treatment = ifelse(treatment == "partial", "Partial", treatment)) %>% 
+  mutate(treatment = ifelse(treatment == "full" |
+                              treatment == "total", "Total", treatment)) %>% 
+  rename(dry_weight_g = weight_g) %>% 
+  group_by(climate, new_block, treatment, species) %>% 
+  summarise_at(vars(dry_weight_g), .fun = sum)
+
+dry_2019
+```
+
+```{r}
+wet_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/wet_weights_2019.csv") %>%
+   mutate(treatment = ifelse(treatment == "open"|
+                              treatment == "control"|
+                               treatment == "Control", "Open", treatment)) %>% 
+  mutate(treatment = ifelse(treatment == "partial", "Partial", treatment)) %>% 
+  mutate(treatment = ifelse(treatment == "full" |
+                              treatment == "total"|
+                              treatment == "Full", "Total", treatment)) %>% 
+  mutate(block = as.character(block)) %>% 
+  left_join(new_block_names, by = c("climate", "block")) %>% 
+  mutate(species = ifelse(species == "Tridilea", "Triteleia ixioides", species)) %>% 
+  mutate(species = ifelse(species == "Popcorn flower" | species == "Popcorn Flower", "Plagiobothrys nothofulvus", species)) %>% 
+  mutate(species = ifelse(species == "Clover" | 
+                            species == "Trifolium" |
+                            species == "clover" |
+                            species == "Triflolium" |
+                            species == "trifolium", "Trifolium microcephalum", species)) %>% 
+  mutate(species = ifelse(species == "Cheatgrass", "Bromus tectorum", species)) %>% 
+  mutate(species = ifelse(species == "Gooseberry", "Ribes", species)) %>% 
+  mutate(species = ifelse(species == "Snowberry"|
+                            species == "snowberry", "Symphoricarpos mollis", species)) %>% 
+  mutate(species = ifelse(species == "bromus diandrus" |
+                            species == "Bromus dian" |
+                            species == "bromus dian", "Bromus diandrus", species)) %>% 
+  mutate(species = ifelse(species == "Foxtail"|
+                            species == "foxtail"|
+                            species == "Hordium murium", "Hordeum murinum", species)) %>% 
+  mutate(species = ifelse(species == "Bedstraw"|
+                            species == "bedstraw"|
+                            species == "Bestraw", "Galium aparine", species)) %>% 
+  mutate(species = ifelse(species == "rabbit brush"|
+                            species == "Rabbit Brush" |
+                            species == "rabbit Brush", "Ericameria nauseosa", species)) %>% 
+  mutate(species = ifelse(species == "J", "Bromus hordeaceus", species)) %>% 
+  mutate(species = ifelse(species == "cheatgrass", "Bromus tectorum", species)) %>% 
+  mutate(species = ifelse(species == "festuca myuros", "Festuca myuros", species)) %>% 
+  rename(wet_weight_g = weight_g)
+
+```
+
+```{r}
+full_join_2019 <- la_2019 %>% 
+  mutate(species = ifelse(species == "Bromus diandus", "Bromus diandrus", species)) %>% 
+  mutate(species = ifelse(species == "Hordeum mirium"|
+                            species == "Hordeum murium", "Hordeum murinum", species)) %>% 
+  full_join(dry_2019, by = c("climate", "new_block", "treatment", "species"), keep = FALSE) %>% 
+  full_join(wet_2019, by = c("climate", "new_block", "treatment", "species"), keep = FALSE) %>% 
+  # removing duplicates that I can't fix
+  filter(!(climate == "Arid" & new_block == "A" & treatment == "Partial" & species == "Triteleia ixioides")) %>%
+  filter(!(climate == "Arid" & new_block == "A" & treatment == "Open" & species == "Galium aparine")) %>%
+  filter(!(climate == "Intermediate" & new_block == "D" & treatment == "Partial" & species == "Bromus diandrus")) %>%
+  filter(!(climate == "Mesic" & new_block == "G" & treatment == "Partial" & species == "Bromus diandrus"))
+
+traits_2019 <- full_join_2019 %>% 
+  dplyr::select(climate, block.x, block.y, new_block, treatment, species, num_leaves, num_indivs, area, wet_weight_g, dry_weight_g) %>% 
+  mutate(dry_weight_mg = dry_weight_g * 1000) %>% 
+  mutate(indiv_area = as.numeric(area) / as.numeric(num_leaves)) %>%
+  mutate(sla = as.numeric(area) / dry_weight_mg) %>% 
+  mutate(ldmc = dry_weight_mg / as.numeric(wet_weight_g))
+
+```
+
+```{r}
+traits <- traits_2019 %>% 
+  filter(sla < 100) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(log_sla_plus = log(sla + 1)) %>% 
+  mutate(sqrt_sla = sqrt(sla)) %>% 
+  mutate(sla2 = sla^2) %>% 
+    drop_na()
+  
+model_1 <- glmmTMB(data = traits, sla ~ treatment * climate * species + (1|new_block), family = gaussian, na.action = na.fail) # model convergence
+dredge(model_1)
+model_1 <- glmmTMB(data = traits, sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit model has climate and species
+model_1 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(model_1, plot= T) # doesn't pass KS test
+shapiro.test(residuals(model_1)) # not normal
+
+# log transformation
+model_1 <- glmmTMB(data = traits,log_sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit model has climate and species
+model_1 <- glmmTMB(data = traits, log_sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(model_1, plot= T) # doesn't pass KS test
+shapiro.test(residuals(model_1)) # not normal
+
+# log+1 transformation
+model_1 <- glmmTMB(data = traits, log_sla_plus ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit model has climate and species
+model_1 <- glmmTMB(data = traits, log_sla_plus ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(model_1, plot= T)  # doesn't pass KS test
+shapiro.test(residuals(model_1)) # not normal
+
+# square root transformation
+model_1 <- glmmTMB(data = traits, sqrt_sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit model has climate and species
+model_1 <- glmmTMB(data = traits, sqrt_sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(model_1, plot= T) # doesn't pass KS test
+shapiro.test(residuals(model_1)) # not normal
+
+# squared transformation
+model_1 <- glmmTMB(data = traits, sla2 ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail) 
+dredge(model_1)
+
+model_1 <- glm(data = traits, sla ~ treatment * climate + species, family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit includes climate and species
+model_1 <- glm(data = traits, sla ~ climate + species, family = gaussian, na.action = na.fail)
+
+simulateResiduals(model_1, plot= T) # so bad
+shapiro.test(residuals(model_1)) # not normal
+```
+
 ## GLMs for individual species change
 
 - Does not include block because I only have the mean for each species at each plot
@@ -140,120 +342,207 @@ model_test <- function(species_name, trait){
 }
 
 ```
+### Bromus diandrus
+```{r}
+bro_dia <- traits_2019 %>% 
+  filter(species == "Bromus diandrus")
 
-#### Bromus diandrus
+ggplot(data = bro_dia, aes(x = climate, y = sla, color = treatment)) +
+  geom_boxplot()
 
+ggplot(data = bro_dia, aes(x = climate, y = indiv_area, color = treatment)) +
+  geom_boxplot()
+
+ggplot(data = bro_dia, aes(x = climate, y = ldmc, color = treatment)) +
+  geom_boxplot()
+
+```
+#### LA
 Best fit: LA ~ 1
-Next best: LA ~ climate
-
-- treatment dropped from model
-- no effect of climate
-
 ```{r}
-bro_dia <- traits_19[traits_19$Species == "Bromus diandrus",] 
-
-
 # model
-glm_bro_dia <- glm(data = bro_dia , LA ~ Treatment * Climate, family = "gaussian", na.action = na.fail)
-dredge(glm_bro_dia) # best fit model is null, second best includes only Climate
+bro_dia_la <- glmmTMB(data = bro_dia, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(bro_dia_la) # get convergence error
 
-simulateResiduals(glm_bro_dia, plot= T) # looks good
-shapiro.test(residuals(glm_bro_dia)) # normal
+bro_dia_la <- glm(data = bro_dia, indiv_area ~ treatment * climate, family = "gaussian", na.action = na.fail)
+dredge(bro_dia_la) # best fit model is intercept only
 
-glm_bro_dia <- glm(data = bro_dia, LA ~ Climate, family = "gaussian", na.action = na.fail)
+bro_dia_la <- glm(data = bro_dia, indiv_area ~ 1, family = "gaussian", na.action = na.fail)
 
-simulateResiduals(glm_bro_dia, plot= T) # looks good
-shapiro.test(residuals(glm_bro_dia)) # but residuals are just normal
-
-# post-hoc
-emmeans(glm_bro_dia, pairwise ~ Climate)
-
-bro_dia_la <- emmeans(glm_bro_dia, ~ Climate)
-plot(bro_dia_la)
+simulateResiduals(bro_dia_la, plot= T) # looks good
+shapiro.test(residuals(bro_dia_la)) # normal
 
 ```
-
-#### Festuca myuros
-
-LA ~ Climate
-
-- Arid > Intermediate; Arid > Mesic
-- treatment dropped from model
-
+### Festuca myuros
 ```{r}
-fes_myu <- traits_19[traits_19$Species == "Festuca myuros",]
+fes_myu <- traits_2019 %>% 
+  filter(species == "Festuca myuros") %>%
+  mutate(log_area = log(indiv_area)) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  drop_na()
 
-glm_fes_myu <- glm(data = fes_myu, LA ~ Climate * Treatment,  family = gaussian, na.action = na.fail)
-dredge(glm_fes_myu) # best fit climate only
-glm_fes_myu <- glm(data = fes_myu, LA ~ Climate,  family = gaussian, na.action = na.fail)
-
-simulateResiduals(glm_fes_myu, plot=T) # not good
-shapiro.test(residuals(glm_fes_myu)) #not normal
-
-# using log transformation
-log_fes_myu <- glm(data = fes_myu, log_LA ~ Climate * Treatment,  family = gaussian, na.action = na.fail)
-dredge(log_fes_myu) # best fit climate only
-log_fes_myu <- glm(data = fes_myu, log_LA ~ Climate,  family = gaussian, na.action = na.fail)
-
-simulateResiduals(log_fes_myu, plot=T)
-shapiro.test(residuals(log_fes_myu)) #normal
-
-# post-hoc testing
-emmeans(log_fes_myu, pairwise ~ Climate)
-
-fes_myu_la <- emmeans(log_fes_myu, ~ Climate)
-plot(fes_myu_la)
+fes_myu %>%
+  pivot_longer(cols = indiv_area:ldmc,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_grid(~ traits, scales = "free")
 
 ```
-
-#### Bromus hordeaceus
-
-LA ~ Climate
-- treatment dropped from model
-- Arid > Int
-
+#### LA
+best fit: LA ~ climate
+* need to do model averaging
 ```{r}
-bro_ho <- traits_19[traits_19$Species == "Bromus hordeaceus",]
+fes_myu_la <- glmmTMB(data = fes_myu, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(fes_myu_la) # get convergence error
 
-glm_bro_ho <- glm(data = bro_ho, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
-dredge(glm_bro_ho) # drops treatment
-glm_bro_ho <- glm(data = bro_ho, LA ~ Climate, family = gaussian, na.action = na.fail)
+fes_myu_la <- glm(data = fes_myu, indiv_area ~ treatment * climate, family = gaussian, na.action = na.fail)
+dredge(fes_myu_la) # best fit model is climate only
+fes_myu_la <- glm(data = fes_myu, indiv_area ~ climate, family = gaussian, na.action = na.fail)
 
-simulateResiduals(glm_bro_ho, plot=T) # good
-shapiro.test(residuals(glm_bro_ho)) # normal
+simulateResiduals(fes_myu_la, plot= T) # bad
+shapiro.test(residuals(fes_myu_la)) # normal
 
-# post-hoc
-emmeans(glm_bro_ho, pairwise ~ Climate)
+# log transformation
+fes_myu_la <- glm(data = fes_myu, log_area ~ treatment * climate, family = gaussian, na.action = na.fail)
+dredge(fes_myu_la) # best fit model is climate only, but need to do model averaging
+fes_myu_la <- glm(data = fes_myu, log_area ~ climate, family = gaussian, na.action = na.fail)
 
-bro_ho_la <- emmeans(glm_bro_ho, ~ Climate)
-plot(bro_ho_la)
-
+simulateResiduals(fes_myu_la, plot= T) # good
+shapiro.test(residuals(fes_myu_la)) # normal
 ```
-
-#### Bromus tectorum
-
-LA ~ 1
-
-- best model is intercept only
-
+#### SLA
+best fit: SLA ~ 1
+* need to do model averaging
 ```{r}
-bro_tec <- traits_19[traits_19$Species == "Bromus tectorum",]
+fes_myu_sla <- glmmTMB(data = fes_myu, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(fes_myu_sla) # get convergence error
 
-glm_bro_tec <- glm(data = bro_tec, LA ~ Climate * Treatment, family = gaussian, na.action = na.fail)
-dredge(glm_bro_tec) # best model has intercept only
+fes_myu_sla <- glm(data = fes_myu, sla ~ treatment * climate, family = gaussian, na.action = na.fail)
+dredge(fes_myu_sla) # best fit model is intercept only, but would need to average
+fes_myu_sla <- glm(data = fes_myu, sla ~ 1, family = gaussian, na.action = na.fail)
 
-simulateResiduals(glm_bro_tec, plot=T) # good
-shapiro.test(residuals(glm_bro_tec)) #normal
+simulateResiduals(fes_myu_sla, plot= T) # ok
+shapiro.test(residuals(fes_myu_sla)) # not normal
+
+# log transformation
+fes_myu_sla <- glm(data = fes_myu, log_sla ~ treatment * climate, family = gaussian, na.action = na.fail)
+dredge(fes_myu_sla) # best fit model is intercept only, but would need to average
+fes_myu_sla <- glm(data = fes_myu, log_sla ~ 1, family = gaussian, na.action = na.fail)
+
+simulateResiduals(fes_myu_sla, plot= T) # ok
+shapiro.test(residuals(fes_myu_sla)) # normal
 
 ```
+### Bromus hordeaceus
+```{r}
+bro_hor <- traits_2019 %>% 
+  filter(species == "Bromus hordeaceus") %>%
+  mutate(log_area = log(indiv_area)) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  drop_na()
 
-#### Hordeum murium
+bro_hor %>%
+  pivot_longer(cols = indiv_area:ldmc,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_grid(~ traits, scales = "free")
 
-LA ~ Treatment
+```
+#### LA
+```{r}
+bro_hor_la <- glmmTMB(data = bro_hor, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail) # get convergence error
 
-- climate dropped from model
-- Total > Open
+bro_hor_la <- glm(data = bro_hor, indiv_area ~ treatment * climate, family = gaussian, na.action = na.fail)
+dredge(bro_hor_la) # best fit model is climate, but would need to average
+bro_hor_la <- glm(data = bro_hor, indiv_area ~ climate, family = gaussian, na.action = na.fail)
 
+simulateResiduals(bro_hor_la, plot= T) # good
+shapiro.test(residuals(bro_hor_la)) # normal
+```
+#### SLA
+```{r}
+bro_hor_sla <- glmmTMB(data = bro_hor, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(bro_hor_sla) # best fit model is intercept, but would need to do averaging
+bro_hor_sla <- glmmTMB(data = bro_hor, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(bro_hor_sla, plot= T) # ok?
+shapiro.test(residuals(bro_hor_sla)) # normal
+
+```
+#### LDMC
+```{r}
+
+```
+### Bromus tectorum
+```{r}
+bro_tec <- traits_2019 %>% 
+  filter(species == "Bromus tectorum") %>%
+  mutate(log_ldmc = log(ldmc)) %>% 
+  drop_na()
+
+bro_tec %>%
+  pivot_longer(cols = indiv_area:log_ldmc,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_grid(~ traits, scales = "free")
+```
+#### LA
+```{r}
+
+```
+#### SLA
+```{r}
+bro_tec_sla <- glmmTMB(data = bro_tec, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(bro_tec_sla) # best fit model is intercept, but would need to do averaging
+bro_tec_sla <- glmmTMB(data = bro_tec, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(bro_tec_sla, plot= T) # good
+shapiro.test(residuals(bro_tec_sla)) # normal
+```
+#### LDMC
+```{r}
+bro_tec_ldmc <- glmmTMB(data = bro_tec, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(bro_tec_ldmc) # best fit model is intercept
+bro_tec_ldmc <- glmmTMB(data = bro_tec, ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(bro_tec_ldmc, plot= T) # does not pass KS test
+shapiro.test(residuals(bro_tec_ldmc)) # normal
+
+# log transformation
+bro_tec_ldmc <- glmmTMB(data = bro_tec, log_ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(bro_tec_ldmc) # best fit model is intercept
+bro_tec_ldmc <- glmmTMB(data = bro_tec, log_ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(bro_tec_ldmc, plot= T) # does not pass KS test
+shapiro.test(residuals(bro_tec_ldmc)) # normal
+
+```
+### Hordeum murium
+```{r}
+hor_mur <- traits_2019 %>% 
+  filter(species == "Bromus tectorum") %>%
+  mutate(log_ldmc = log(ldmc)) %>% 
+  drop_na()
+
+hor_mur %>%
+  pivot_longer(cols = indiv_area:ldmc,
+               names_to = "traits",
+               values_to = "value") %>%
+  ggplot(aes(x = climate, y = value, color = treatment)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_grid(~ traits, scales = "free")
+```
+#### LA
 ```{r}
 hor_mur <- traits_19[traits_19$Species == "Hordeum murinum",]
 
