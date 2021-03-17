@@ -7,24 +7,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(tidyverse)
-library(ggplot2)
-library(stats)
-library(sjPlot)
-library(FD)
-library(DHARMa) #model diagnostics
-library(glmmTMB) #model fitting
-library(MuMIn) #model summaries and comparisons
-library(emmeans) #post-hoc analyses
-library(gt)
-library(tibble)
-library(lsmeans)
-library(gridExtra)
-library(multcomp)
-library(car)
-# remotes::install_github("const-ae/ggsignif")
-library(ggsignif)
-library(ggeffects)
+packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt")
+lapply(packages, library, character.only = TRUE)
 
 
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
@@ -98,7 +82,7 @@ LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family =
 dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
 
 # Checking data
-simulateResiduals(LA_CWM, plot= T) #What is the red asterisk on the model predictions graph?
+simulateResiduals(LA_CWM, plot = T) #What is the red asterisk on the model predictions graph?
 shapiro.test(residuals(LA_CWM)) #normal
 
 # pairwise comparisons
@@ -134,21 +118,20 @@ emmeans(LA_CWM, pairwise ~ climate * treatment)
 la_emm <- emmeans(LA_CWM, ~ climate)
 la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
 
-pretty_table <- la_data_1 %>% 
-  as_tibble() %>% 
-  gt(rowname_col = "contrast", groupname_col = "functional_group") %>% 
-  tab_header(
-    title = "Climate by Functional Group") %>% 
-  fmt_number("p.value", decimal = 4) %>% 
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      columns = vars(p.value),
-      rows = p.value <= 0.05)
-  )
+# pretty_table <- la_data_1 %>% 
+#   as_tibble() %>% 
+#   gt(rowname_col = "contrast", groupname_col = "functional_group") %>% 
+#   tab_header(
+#     title = "Climate by Functional Group") %>% 
+#   fmt_number("p.value", decimal = 4) %>% 
+#   tab_style(
+#     style = cell_text(weight = "bold"),
+#     locations = cells_body(
+#       columns = vars(p.value),
+#       rows = p.value <= 0.05)
+#   )
 
 plot_model(LA_CWM)
-
 ```
 ##### i. double-checking against ANOVA results
 ```{r}
@@ -183,6 +166,7 @@ TukeyHSD(LA_aov)
 ```{r}
 # best fit model
 SLA_CWM <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
+# SLA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail) 
 dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
 
 # testing data
@@ -195,6 +179,7 @@ SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>%
 emmeans(SLA_CWM, pairwise ~ climate)
 emmeans(SLA_CWM, pairwise ~ treatment)
 emmeans(SLA_CWM, pairwise ~ climate * treatment)
+TukeyHSD(LA_aov)
 
 
 plot(emmeans(SLA_CWM, pairwise ~ treatment * climate), comparisons = TRUE)
