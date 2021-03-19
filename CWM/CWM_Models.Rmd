@@ -7,24 +7,25 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+# loading packages
 packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt")
-lapply(packages, library, character.only = TRUE)
+(lapply(packages, library, character.only = TRUE))
 
-
+# loading trait data
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
 cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
-  mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
+  mutate(weighted_la = leaf_area * Abundance) %>% # multiplying trait values by species abundance
   mutate(weighted_sla = sla * Abundance) %>% 
   mutate(weighted_ldmc = ldmc * Abundance) %>%
   mutate(weighted_seed_mass = seed_mass * Abundance) %>%
   mutate(weighted_n = leaf_n * Abundance) %>%
-  group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
-  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+  group_by(climate, treatment, Block) %>% # grouping by climate, treatment, and block
+  summarise_all(mean, na.rm = TRUE) %>% # finding the mean, skipping over NA values
   dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
-# log transformation for seed mass & leaf n
+# adding log transformation for seed mass & leaf n
 cwm_traits_adj <- cwm_traits_adj %>% 
   mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
   mutate(log_n = log(weighted_n))
