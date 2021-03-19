@@ -261,21 +261,35 @@ traits_2019 <- full_join_2019 %>%
 
 ```{r}
 traits <- traits_2019 %>% 
-  filter(sla < 60) %>% # there are a few crazy outliers that I need to go double-check
-  # filter(ldmc < 1000) %>%  # there are a few crazy outliers that I need to go double-check
-    drop_na()
-
+  # filter(sla < 60) %>% # there are a few crazy outliers that I need to go double-check
+  filter(ldmc < 1000) %>%  # there are a few crazy outliers that I need to go double-check %>% 
+  mutate(log_ldmc = log(ldmc)) %>% 
+  unite(c("climate", "new_block", "treatment"), col = "plot", sep = "-", remove = FALSE) %>% 
+  drop_na()
+  
 ggplot(data = traits, aes(x = sla, color = treatment)) +
   geom_histogram()
   
 # SLA
-model_1 <- model_1 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(model_1)
-model_1 <- model_1 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+# without block
+model_1 <-  glmmTMB(data = traits, sla ~ treatment * species + climate * species, family = gaussian, na.action = na.fail)
+dredge(model_1) # best fit model is climate and species; AIC = 1198.3
+model_1 <- model_1 <- glmmTMB(data = traits, sla ~ climate + species, family = gaussian, na.action = na.fail)
+simulateResiduals(model_1, plot= T) # doesn't pass KS test
 
-simulateResiduals(model_1, plot= T)
+# with block (old)
+model_2 <-  glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block), family = gaussian, na.action = na.fail)
+dredge(model_2) # best fit model is climate and species; AIC = 1190.2
+model_2 <-  glmmTMB(data = traits, sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+simulateResiduals(model_2, plot= T)
 
-# LDMC
+# with block (new)
+# model_3 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
+# this is the same model as above because I have a unique name for each block and plot
+model_3 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_3) # best fit is climate and species; AIC = 1206.0
+model_3 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block/plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_3, plot= T) # does not pass outlier test
 
 ```
 
@@ -409,12 +423,9 @@ Best fit: LA ~ 1
 ```{r}
 # model
 bro_dia_la <- glmmTMB(data = bro_dia, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(bro_dia_la) # get convergence error
+dredge(bro_dia_la) # get convergence error; best fit model is intercept only
 
-bro_dia_la <- glm(data = bro_dia, indiv_area ~ treatment * climate, family = "gaussian", na.action = na.fail)
-dredge(bro_dia_la) # best fit model is intercept only
-
-bro_dia_la <- glm(data = bro_dia, indiv_area ~ 1, family = "gaussian", na.action = na.fail)
+bro_dia_la <- glm(data = bro_dia, indiv_area ~ 1 + (1|new_block), family = "gaussian", na.action = na.fail)
 
 simulateResiduals(bro_dia_la, plot= T) # looks good
 shapiro.test(residuals(bro_dia_la)) # normal
