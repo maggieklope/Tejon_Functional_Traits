@@ -179,7 +179,7 @@
 178,Mesic,2,Partial,Cheatgrass,6,5,0.07,
 179,Mesic,2,Partial,Snowberry,20,11,0.65,
 180,Mesic,3,Open,Cheatgrass,16,12,0.43,
-181,Mesic,3,Open,Bromus diandrus,14,11,0.72,
+181,Mesic,3,Open,Bromus diandrus,17,11,0.72,
 182,Mesic,3,Open,Foxtail,15,9?,0.23,
 183,Mesic,3,Open,Snowberry,20,10,0.71,
 184,Mesic,3,Total,Cheatgrass,6,6,0.13,
@@ -204,7 +204,7 @@
 203,Mesic,1,Total,Snowberry,20,10,0.63,
 204,Mesic,1,Total,Bromus hordeaceus,7,4,0.1,
 205,Mesic,1,Total,Cheatgrass,look at scan,5,0.18,
-206,Mesic,1,Total,Bromus dian,2,1,0.01,
+206,Mesic,1,Total,Bromus dian,2,1,0.01,There is no way this weight is correct
 207,Mesic,1,Open,Gooseberry,20,10,1.73,
 208,Mesic,3,Partial,Gooseberry,18,9,1.52,
 209,Mesic,1,Open,Snowberry,20,10,0.66,
