@@ -1,0 +1,94 @@
+---
+title: "Spatial Autocorrelation"
+author: "Maggie Klope"
+date: "3/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(sf)
+
+# loading lat/long data
+block_points <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/Tejon_Plots.kml"
+                          )
+points <- corner_points %>% 
+  unite(climate:treatment, col = "plot", sep = "-") %>% 
+  dplyr::select(plot, lat, long)
+
+st_geometry(points) <- NULL
+head(points)
+
+# loading trait data
+ss_sla <- traits %>% 
+    dplyr::select(climate, new_block, treatment, species, sla) %>%
+    unite(climate:treatment, col = "plot", sep = "-", remove = FALSE) %>%
+    left_join(points, by = "plot")
+
+head(ss_sla)
+
+```
+
+### models
+```{r}
+# without block
+model_2 <-  glmmTMB(data = ss_sla, sla ~ treatment * species + climate * species, family = gaussian, na.action = na.fail)
+dredge(model_2) # AIC 1215.7
+model_2 <-  glm(data = ss_sla, sla ~ climate + species, family = gaussian, na.action = na.fail)
+simulateResiduals(model_2, plot= T) # doesn't pass KS test
+
+resid_2 <- simulateResiduals(model_2)
+
+ss_sla$plot <- as.factor(ss_sla$plot)
+
+boxplot(resid_2$scaledResiduals ~ ss_sla$plot, ylab = "Scaled Residuals")
+kruskal.test(x = resid_2$scaledResiduals, g = ss_sla$plot) # p < 0.05 = differences between medians are statistically significant
+
+# #  with block
+# model_3 <- glmmTMB(data = ss_sla, sla ~ treatment * species + climate * species + (1|new_block), family = gaussian, na.action = na.fail)
+# dredge(model_3) # AIC = 1204.6
+# model_3 <- glmmTMB(data = ss_sla, sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
+# simulateResiduals(model_3, plot= T) # doesn't pass outlier test
+# 
+# resid_3 <- simulateResiduals(model_3)
+# 
+# boxplot(resid_3$scaledResiduals ~ ss_sla$plot, ylab = "Scaled Residuals")
+# kruskal.test(x = resid_3$scaledResiduals, g = ss_sla$plot) # p < 0.05 = differences between medians are statistically significant
+
+#  with block
+model_3 <- glmmTMB(data = ss_sla, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
+dredge(model_3) # AIC = 1206.0
+model_3 <- glmmTMB(data = ss_sla, sla ~ climate + species + (1|new_block/plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_3, plot= T) # ok!
+
+resid_3 <- simulateResiduals(model_3)
+
+boxplot(resid_3$scaledResiduals ~ ss_sla$plot, ylab = "Scaled Residuals")
+kruskal.test(x = resid_3$scaledResiduals, g = ss_sla$plot) # p < 0.05 = differences between medians are statistically significant
+
+```
+
+
+```{r}
+refit_2 <- recalculateResiduals(resid_2, group = as.character(ss_sla$plot))
+refit_3 <- recalculateResiduals(resid_3, group = as.character(ss_sla$plot))
+
+refit_2$long <- corner_points$long
+refit_2$lat <- corner_points$lat
+# refit_2$lat <- aggregate(corner_points$lat, list(as.factor(as.character(unique(ss_sla$plot)))), mean)$x
+
+plot(spline.correlog(refit_2$long, refit_2$lat, refit_2$scaledResiduals, 
+                     latlon = T, resamp = 200))
+
+# # making distance dataframes
+# point.dist <- dist(cbind(sla_cwm$long, sla_cwm$lat))
+# sla.dist <- dist(cbind(sla_cwm$weighted_sla))
+
+# # running mantel test
+# mantel.rtest(point.dist,sla.dist, nrepet = 9999)
+
+
+
+```
