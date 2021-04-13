@@ -1,0 +1,35 @@
+---
+title: "herbivore_coutns"
+author: "Maggie Klope"
+date: "2/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+
+counts <- read_csv("~/Desktop/Devyn_dung_herbivore_data/JEcol_RawDungCounts.csv")
+
+counts_2 <- counts %>% 
+  pivot_longer(cols = ALL_COW:ALL_PIG,
+               names_to = "herbivore",
+               values_to = "count")
+  # dplyr::select(YEAR, SEASON, LEVEL, BLOCK, TREATMENT, TRANSECT, herbivore, count)
+  # group_by(YEAR, LEVEL, TREATMENT, herbivore) %>% 
+  # summarise_all(mean) %>% 
+  # dplyr::select(YEAR, LEVEL, TREATMENT, count) %>% 
+  # group_by(YEAR, LEVEL, TREATMENT) %>% 
+  # summarise_all(.funs = sum)
+
+ggplot(data = counts_2, aes(x = TREATMENT, y = count, color = LEVEL)) +
+  geom_boxplot() +
+  theme_bw()
+  # facet_grid(~ YEAR, scales = "free")
+
+```
+
+
+
