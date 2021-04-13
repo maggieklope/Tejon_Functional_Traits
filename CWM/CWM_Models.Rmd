@@ -1,5 +1,5 @@
 ---
-title: "CWM_Models"
+title: "CWM Models"
 author: "Maggie Klope"
 output: html_document
 ---
@@ -32,16 +32,18 @@ cwm_traits_adj <- cwm_traits_adj %>%
 
 ```
 
-## GLMs for Community-weighted means (CWMs)
-
 - Calculated with 2017 trait data
-- again, one value per climate/treatment/block so no blocking effect included
+- Only one block sampled at each climate/treatment, so no blocking effect.
 
-### Models:
+### Questions:
 
 **What is the effect of climate and grazing on community-weighted means?**
 
-`lm(LA ~ Climate * Treatment, family = gaussian)`
+**Is there an interaction between climate and grazing?**
+
+### Models:
+
+`glm(LA ~ Climate * Treatment, family = gaussian)`
 
 ```{r, include=FALSE}
 cwm_bar_data <- cwm_traits_adj %>%
@@ -59,7 +61,7 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
 
 ```
 
-#### a. LA CWM
+#### a) LA CWM
 
 - Averaged over treatment, climate is different between Arid-Int and Arid-Mesic
 - Averaged over climate, treatment is different between Open-Total and Partial-Total, but not Open-Partial
@@ -76,19 +78,16 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
     - No difference between Int Total and Mesic Total
 - No differences between Open or Partial Treatments across climates
 
-
 ```{r}
 # Best fit model:
 LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
 dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
 
 # Checking data
-simulateResiduals(LA_CWM, plot = T) #What is the red asterisk on the model predictions graph?
+simulateResiduals(LA_CWM, plot = T)
 shapiro.test(residuals(LA_CWM)) #normal
 
 # pairwise comparisons
-emmeans(LA_CWM, pairwise ~ climate)
-emmeans(LA_CWM, pairwise ~ treatment)
 emmeans(LA_CWM, pairwise ~ climate * treatment)
 
 #visualization
@@ -132,7 +131,6 @@ la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
 #       rows = p.value <= 0.05)
 #   )
 
-plot_model(LA_CWM)
 ```
 ##### i. double-checking against ANOVA results
 ```{r}
