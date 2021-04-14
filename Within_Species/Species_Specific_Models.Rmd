@@ -111,8 +111,10 @@ cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datash
 
 ```
 
-# Uploading New Data
+
 ```{r, include=FALSE}
+# Uploading New Data
+
 # read in data
 new_block_names <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/new_block_names.csv") %>% 
   mutate(block = as.character(block))
@@ -195,7 +197,7 @@ dry_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/dr
 
 ```
 
-```{r}
+```{r, include=FALSE}
 wet_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/wet_weights_2019.csv") %>%
    mutate(treatment = ifelse(treatment == "open"|
                               treatment == "control"|
@@ -236,7 +238,7 @@ wet_2019 <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/we
 
 ```
 
-```{r}
+```{r, include=FALSE}
 full_join_2019 <- la_2019 %>% 
   mutate(species = ifelse(species == "Bromus diandus", "Bromus diandrus", species)) %>% 
   mutate(species = ifelse(species == "Hordeum mirium"|
@@ -256,43 +258,61 @@ traits_2019 <- full_join_2019 %>%
   mutate(sla = as.numeric(area) / dry_weight_mg) %>% 
   mutate(ldmc = dry_weight_mg / as.numeric(wet_weight_g))
 
-```
-
-```{r}
 traits <- traits_2019 %>% 
   filter(dry_weight_g < wet_weight_g) %>%  # removing incorrect weights
-  filter(sla < 65) %>% # there is one big outlier, and I don't think the dry weight is correct
+  filter(sla < 65) %>% # there is one big outlier, but I don't think the dry weight is correct and need to re-weight
   mutate(log_ldmc = log(ldmc)) %>% 
+  mutate(log_la = log(indiv_area)) %>% 
+  mutate(log_sla = log(sla)) %>% 
   unite(c("climate", "new_block", "treatment"), col = "plot", sep = "-", remove = FALSE) %>% 
   drop_na()
-  
-ggplot(data = traits, aes(x = sla, color = treatment)) +
-  geom_histogram()
-  
-# SLA
-# without block
-model_1 <-  glmmTMB(data = traits, sla ~ treatment * species + climate * species, family = gaussian, na.action = na.fail)
-dredge(model_1) # best fit model is climate and species; AIC = 1198.3
-model_1 <- model_1 <- glmmTMB(data = traits, sla ~ climate + species, family = gaussian, na.action = na.fail)
-simulateResiduals(model_1, plot= T) # doesn't pass outlier test
-
-# with block (old)
-model_2 <-  glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(model_2) # best fit model is climate and species; AIC = 1190.2
-model_2 <-  glmmTMB(data = traits, sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-simulateResiduals(model_2, plot= T) # doesn't pass outlier test
-
-# with block (new)
-# model_3 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
-# this is the same model as above because I have a unique name for each block and plot
-model_3 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_3) # best fit is climate and species; AIC = 1206.0
-model_3 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block/plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_3, plot= T) # does not pass outlier test
 
 ```
 
+## One model approach:
+
+Question: **Do functional traits change within species across climates and herbivore treatments?**
+
+Ideal models: `glmm(trait ~ Climate * Species + Treatment * Species + (1|Block/plot), family = gaussian)`
+
+- the presence of an interaction between treatment and species or climate and species is what I am interested in detecting
+- one model for each trait
 ```{r}
+# SLA
+# model_sla <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
+# this is the same model as above because I have a unique name for each block and plot
+model_sla <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla) # best fit is climate and species; 1155.0
+model_sla <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_sla, plot= T) # does not pass outlier test
+
+#log(SLA)
+model_sla <- glmmTMB(data = traits, log_sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla) # best fit is climate and species; AIC = 1.7 <- so low - is that even possible?
+model_sla <- glmmTMB(data = traits, log_sla ~ treatment + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_sla, plot= T) # still doesn't pass outlier test :(
+
+# LA
+model_la <- glmmTMB(data = traits, indiv_area ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_la) # best fit is intercept (AIC = 2823.5) followed by climate (AIC = 2824.5)
+model_la <- glmmTMB(data = traits, indiv_area ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_la, plot= T) # doesn't pass outlier test
+
+# log(LA)
+model_la <- glmmTMB(data = traits, log_la ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_la) # best fit is species + treatment (AIC = 247.5) followed by climate + species + treatment (AIC = 248.7)
+model_la <- glmmTMB(data = traits, log_la ~ species + treatment + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_la, plot= T) # looks good?
+
+# LDMC
+model_ldmc <- glmmTMB(data = traits, ldmc~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_ldmc) # best fit intercept only (AIC = 2165.1)
+model_la <- glmmTMB(data = traits, ldmc ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_la, plot= T) # looks good
+
+```
+
+```{r, include=FALSE}
 # 
 # # log transformation
 # model_1 <- glmmTMB(data = traits,log_sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
@@ -372,19 +392,17 @@ simulateResiduals(model_3, plot= T) # does not pass outlier test
 
 ```
 
-## GLMs for individual species change
+## Individual GLMs for individual species change (one model for each trait/species)
 
-- Does not include block because I only have the mean for each species at each plot
 - Some species are present in all climate/treatment, but some are not
 - Based off of 2019 abundance data and 2019 trait collection data (LA, SLA, LDMC)
 
 Question: **What is the effect of climate and grazing on individual species trait changes?**
 
-Ideal models: `glm(trait ~ Climate * Treatment, family = gaussian)`
+Ideal models: `glmm(trait ~ Climate * Treatment + (1|Block), family = gaussian)`
 
 - could do for seed mass and leaf N, but those values would be from TRY Database
 - species chosen as those that are present across as many climate/treatment combinations as possible
-- unfortunately, I scanned and weighed the leaves together to get averages, so I have lost the ability to add block to my models
 - need to think of how I would deal with multiple comparisons (bonferroni correction)?
 
 ```{r, include = FALSE}
