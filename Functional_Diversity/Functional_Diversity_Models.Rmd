@@ -20,15 +20,14 @@ library(emmeans) #post-hoc analyses
 library(gt)
 library(knitr)
 library(ggsignif) # for adding significance comparisons to graphs
+library(ggeffects)
 ```
 
-### Calculations
-
 ```{r tidy data, include=FALSE}
-other_traits <- read_csv("Datasheets/seed_mass_leaf_N.csv")
+other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
 #making a df just for functional diveristy calculations
-for_FD <- read_csv("Datasheets/cwm_traits_updated.csv") %>% 
+for_FD <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
   select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>% 
   drop_na
@@ -214,61 +213,59 @@ FD_all %>%
 
 ```
 
-### Graphs
-
-```{r}
+```{r, include=FALSE}
 
 # opts_knit$set(root.dir = "~/github/Tejon_Functional_Traits/Villeger_code/functions")
 
 #loading Villeger functions
 # setwd("~/github/Tejon_Functional_Traits/Villeger_code/functions") # folder where R functions have been saved
 
-source("quality_funct_space.R")
-source("plot_funct_space.R")
-source("multidimFD.R")
-source("multidimFbetaD.R")
+# source("quality_funct_space.R")
+# source("plot_funct_space.R")
+# source("multidimFD.R")
+# source("multidimFbetaD.R")
 
 ```
 
-```{r,}
+```{r,include=FALSE}
 # opts_knit$set(root.dir = "~/github/Tejon_Functional_Traits/Figures/FD")
 
-# make sure data is in correct format
-sum(row.names(arid_open_trait) %in% colnames(arid_open_abund)) == ncol(arid_open_abund) #TRUE
-
-# first, use quality_funct_space(traits df, plot = "name")
-qual_funct_space <- quality_funct_space(arid_open_trait, 
-                                        plot = "arid_open_qual_funct_space")
-
-qual_funct_space <- quality_funct_space(as.matrix(arid_open_trait), 
-                                        traits_weights = NULL, 
-                                        nbdim = 6, 
-                                        metric = "Gower",
-                                        dendro = TRUE, 
-                                        plot = "arid_open_qual_funct_space")
-
-qual_funct_space$meanSD
-# best value is the smallest, so in this case 3D
-
-arid_open_coord_3D <- qual_funct_space$details_funct_space$mat_coord[ ,1:3]
-arid_open_coord_3D
-
-FD_test <- multidimFD(arid_open_coord_3D, 
-                         arid_open_abund, 
-                         check_species_pool = TRUE, 
-                         verb = TRUE,
-                         nm_asb_plot = row.names(arid_open_abund), 
-                         folder_plot = "~/github/Tejon_Functional_Traits/Figures/FD",
-                         Faxes_plot = colnames(arid_open_coord_3D)[1:3], 
-                         Faxes_nm_plot = colnames(arid_open_coord_3D)[1:3],
-                         plot_pool = TRUE, 
-                         col_bg = "grey90", 
-                         col_sp_pool = "grey30",  
-                         pch_sp_pool = "+", 
-                         cex_sp_pool = 1, 
-                         pch_sp = 21, 
-                         col_sp = "#1E90FF", 
-                         transp = 50)
+# # make sure data is in correct format
+# sum(row.names(arid_open_trait) %in% colnames(arid_open_abund)) == ncol(arid_open_abund) #TRUE
+# 
+# # first, use quality_funct_space(traits df, plot = "name")
+# qual_funct_space <- quality_funct_space(arid_open_trait, 
+#                                         plot = "arid_open_qual_funct_space")
+# 
+# qual_funct_space <- quality_funct_space(as.matrix(arid_open_trait), 
+#                                         traits_weights = NULL, 
+#                                         nbdim = 6, 
+#                                         metric = "Gower",
+#                                         dendro = TRUE, 
+#                                         plot = "arid_open_qual_funct_space")
+# 
+# qual_funct_space$meanSD
+# # best value is the smallest, so in this case 3D
+# 
+# arid_open_coord_3D <- qual_funct_space$details_funct_space$mat_coord[ ,1:3]
+# arid_open_coord_3D
+# 
+# FD_test <- multidimFD(arid_open_coord_3D, 
+#                          arid_open_abund, 
+#                          check_species_pool = TRUE, 
+#                          verb = TRUE,
+#                          nm_asb_plot = row.names(arid_open_abund), 
+#                          folder_plot = "~/github/Tejon_Functional_Traits/Figures/FD",
+#                          Faxes_plot = colnames(arid_open_coord_3D)[1:3], 
+#                          Faxes_nm_plot = colnames(arid_open_coord_3D)[1:3],
+#                          plot_pool = TRUE, 
+#                          col_bg = "grey90", 
+#                          col_sp_pool = "grey30",  
+#                          pch_sp_pool = "+", 
+#                          cex_sp_pool = 1, 
+#                          pch_sp = 21, 
+#                          col_sp = "#1E90FF", 
+#                          transp = 50)
 
 ```
 
@@ -306,27 +303,18 @@ simulateResiduals(FRic, plot=T) # looks ok
 shapiro.test(residuals(FRic)) # residuals are normal
 
 # significant pairs
-FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>% 
-  filter(p.value <= 0.05)
+# FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>% 
+#   filter(p.value <= 0.05)
+# FRic_sig_pairs
 
-# all pairwise comparisons
-emmeans(FRic, pairwise ~ climate)
-emmeans(FRic, pairwise ~ treatment)
-emmeans(FRic, pairwise ~ climate * treatment)
-emmeans(FRic, pairwise ~ climate | treatment)
-pairs(emmeans(FRic, ~ climate | treatment)) # same thing
-
+# pairwise comparisons
+# emmeans(FRic, pairwise ~ climate * treatment)
+# emmeans(FRic, pairwise ~ climate | treatment)
+# pairs(emmeans(FRic, ~ climate | treatment)) # same thing
 
 # looking at ggeffects graphs to plot marginal means
-library(ggeffects)
-
-dat <- ggpredict(FRic, terms = c("climate", "treatment"))
 dat <- ggpredict(FRic, terms = c("treatment", "climate"))
-test_plot <- plot(dat, facet = TRUE)
-plot(dat)
-plot(dat, connect.lines = TRUE, ci.style = "dot")
-
-# ggsave("FRic_emmean.png", plot = test_plot, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 4, width = 5, bg = "transparent")
+plot(dat, facet = TRUE)
 
 ```
 
@@ -338,28 +326,12 @@ plot(dat, connect.lines = TRUE, ci.style = "dot")
 
 ```{r}
 FEve <- glm(data = FD_all, FEve ~ climate * treatment, family = gaussian, na.action = na.pass)
-dredge(FEve) #best model includes only the intercept, going forward with testing for fit to make sure I'm using correct family
+dredge(FEve) #best model includes only the intercept
 FEve <- glm(data = FD_all, FEve ~ 1, family = gaussian, na.action = na.fail)
 
 # does data fit model?
 simulateResiduals(FEve, plot=T) # good
 shapiro.test(residuals(FEve)) # residuals are normal
-
-ggplot(FD_all, aes(x = FEve)) +
-  geom_histogram() +
-  theme_bw()
-
-shapiro.test(FD_all$FEve) #data is normal
-
-# next best model:
-FEve <- glm(data = FD_all, FEve ~ treatment, family = gaussian, na.action = na.fail)
-
-# does data fit model?
-simulateResiduals(FEve, plot=T) # good
-shapiro.test(residuals(FEve)) # residuals are normal
-
-# all pairwise comparisons
-emmeans(FEve, pairwise ~ treatment) #no significance between treatments
 
 ```
 
@@ -394,15 +366,14 @@ dredge(FDiv) #best model: FDiv ~ climate * treatment
 simulateResiduals(FDiv, plot=T) # looks ok
 shapiro.test(residuals(FDiv)) # residuals are  normal
 
-# significant pairs
-FDiv_sig_pairs <-  as.data.frame(pairs(emmeans(FDiv, ~ climate * treatment)))%>% 
-  filter(p.value <= 0.05)
-
 # all pairwise comparisons
-emmeans(FDiv, pairwise ~ climate)
-emmeans(FDiv, pairwise ~ treatment)
+# emmeans(FDiv, pairwise ~ climate)
+# emmeans(FDiv, pairwise ~ treatment)
 # emmeans(FDiv, pairwise ~ climate * treatment)
-emmeans(FDiv, pairwise ~ climate | treatment)
+
+# estimated marginal means plot
+dat <- ggpredict(FDiv, terms = c("treatment", "climate"))
+plot(dat, facet = TRUE)
 ```
 
 #### FDis
@@ -442,40 +413,21 @@ dredge(FDis) #best model: FDis ~ climate * treatment
 simulateResiduals(FDis, plot=T) # looks ok
 shapiro.test(residuals(FDis)) # residuals are normal
 
-# significant pairs
-FDis_sig_pairs <-  as.data.frame(pairs(emmeans(FDis, ~ climate * treatment)))%>% 
-  filter(p.value <= 0.05)
 
-# all pairwise comparisons
-emmeans(FDis, pairwise ~ climate)
-emmeans(FDis, pairwise ~ treatment)
-# emmeans(FDis, pairwise ~ climate * treatment)
-emmeans(FDis, pairwise ~ climate | treatment)
+# # all pairwise comparisons
+# emmeans(FDis, pairwise ~ climate)
+# emmeans(FDis, pairwise ~ treatment)
+# emmeans(FDis, pairwise ~ climate | treatment)
 
-```
-
-#### RaoQ
-
-```{r RaoQ, include=FALSE}
-RaoQ <- glmmTMB(data = FD_all, RaoQ ~ climate * treatment, family = gaussian)
-dredge(RaoQ) #best model: RaoQ ~ climate * treatment
-
-# does data fit model?
-simulateResiduals(RaoQ, plot=T) # Looks like there is a weird pattern
-shapiro.test(residuals(RaoQ)) # but residuals are normal
-
-#significant pairs
-RaoQ_sig_pairs <-  as.data.frame(pairs(emmeans(RaoQ, ~ climate * treatment)))%>% 
-  filter(p.value <= 0.05)
-
-#all pairs
-emmeans(RaoQ, pairwise ~ climate * treatment)
+# estimated marginal means plot
+dat <- ggpredict(FDis, terms = c("treatment", "climate"))
+plot(dat, facet = TRUE)
 
 ```
 
 #### Best-Fit & AIC Table
 
-```{r}
+```{r, include=FALSE}
 
 dredge_FRic <- as.data.frame(dredge(FRic)) %>%
   filter(AICc == min(AICc)) %>% 
@@ -533,14 +485,14 @@ pretty_table
 
 ```
 #### AIC Supplement Table
-```{r}
+```{r, include=FALSE}
 dredge_FRic <- as.data.frame(dredge(FRic)) %>%
   mutate(CWM = "FRic") %>% 
   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
 
-dredge_FEve <- as.data.frame(dredge(FEve)) %>%
-  mutate(CWM = "FEve") %>%
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# dredge_FEve <- as.data.frame(dredge(FEve)) %>%
+#   mutate(CWM = "FEve") %>%
+#   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
 
 dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
   mutate(CWM = "FDiv") %>%
@@ -581,12 +533,12 @@ fd_aic_sup <- dredge_table %>%
 
 fd_aic_sup
 
-gtsave(data = fd_aic_sup, filename = "FD_AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# gtsave(data = fd_aic_sup, filename = "FD_AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 
 #### EMM Graphs
-```{r}
+```{r, include=FALSE}
 # color of arrows
 arrow_colors <- (rep(c("red", "orange", "blue"), 3))
 
@@ -643,7 +595,7 @@ FRic_plot <- emm_plot(FRic_emmeans) +
     y_position = 5, xmin = 8, xmax = 9,
     tip_length = c(.05, .2))
 
-ggsave("FRic_emmean.png", plot = FRic_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+# ggsave("FRic_emmean.png", plot = FRic_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 
 # FDiv
 FDiv_emmeans <- emmeans(FDiv, ~ treatment | climate)
@@ -677,7 +629,7 @@ FDiv_plot <- emm_plot(FDiv_emmeans) +
     y_position = .9, xmin = 8, xmax = 9,
     tip_length = c(.3, .05))
 
-ggsave("FDiv_emmean.png", plot = FDiv_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+# ggsave("FDiv_emmean.png", plot = FDiv_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 
 # FDis
 FDis_emmeans <- emmeans(FDis, ~ treatment | climate)
@@ -709,21 +661,21 @@ FDis_plot <- emm_plot(FDis_emmeans) +
     y_position = 1.8, xmin = 7, xmax = 9,
     tip_length = c(.05, .35))
 
-ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
+# ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 
 ```
 
 #### ggeffects Graphs
-```{r}
-ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
-
-FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
-# FEve_plot <- plot(ggpredict(FEve),  colors = ggeffects_colors, facet = TRUE)
-FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
-
-FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
-
-ggsave("CFD_emmeans.png", plot = FD_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
+```{r, include=FALSE}
+# ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
+# 
+# FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+# # FEve_plot <- plot(ggpredict(FEve),  colors = ggeffects_colors, facet = TRUE)
+# FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+# 
+# FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
+# 
+# ggsave("CFD_emmeans.png", plot = FD_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
 
 ```
 
