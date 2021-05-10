@@ -279,20 +279,45 @@ Ideal models: `glmm(trait ~ Climate * Species + Treatment * Species + (1|Block/p
 
 - the presence of an interaction between treatment and species or climate and species is what I am interested in detecting
 - one model for each trait
-```{r, warning = FALSE}
-# SLA
+
+#### SLA
+
+```{r}
+# SLA ~ treatment * species + climate * species + (1|new_block/plot)
 # model_sla <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
 # this is the same model as above because I have a unique name for each block and plot
-model_sla <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla) # best fit is climate and species; 1155.0
-model_sla <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_sla, plot= T) # does not pass outlier test
+model_sla_1 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla_1) # best fit is climate and species; AICc = 1155.0
+model_sla_1 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_sla_1, plot= T) # does not pass outlier test
 
-#log(SLA)
-model_sla <- glmmTMB(data = traits, log_sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla) # best fit is climate and species; AIC = 1.7 <- so low - is that even possible?
-model_sla <- glmmTMB(data = traits, log_sla ~ treatment + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_sla, plot= T) # still doesn't pass outlier test :(
+# SLA ~ treatment * species + (1|new_block/plot)
+model_sla_2 <- glmmTMB(data = traits, sla ~ treatment * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla_2) # best fit is climate only; AICc = 1159.2
+model_sla_2 <- glmmTMB(data = traits, sla ~ treatment + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_sla_2, plot= T) # looks good
+
+# SLA ~ climate * species + (1|new_block/plot)
+model_sla_3 <- glmmTMB(data = traits, sla ~ climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla_3) # best fit is climate + species; AICc = 1155.0
+model_sla_3 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+simulateResiduals(model_sla_3, plot= T) # does not pass outlier test
+
+# SLA ~ 1 + (1|new_block/plot)
+model_sla_4 <- glmmTMB(data = traits, sla ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+dredge(model_sla_4) # AICc = 1381
+simulateResiduals(model_sla_4, plot= T) # looks good
+
+# #log(SLA)
+# model_sla <- glmmTMB(data = traits, log_sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+# dredge(model_sla) # best fit is climate and species; AIC = 1.7 <- so low - is that even possible?
+# model_sla <- glmmTMB(data = traits, log_sla ~ treatment + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
+# simulateResiduals(model_sla, plot= T) # still doesn't pass outlier test :(
+
+```
+
+```{r, warning = FALSE}
+
 
 # LA
 model_la <- glmmTMB(data = traits, indiv_area ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
