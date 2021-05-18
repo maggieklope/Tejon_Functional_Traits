@@ -14,13 +14,16 @@ packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "t
 # loading trait data
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
+# cwm_int <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+#   left_join(other_traits, by = "species_name")
+
 cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
   mutate(weighted_la = leaf_area * Abundance) %>% # multiplying trait values by species abundance
   mutate(weighted_sla = sla * Abundance) %>% 
   mutate(weighted_ldmc = ldmc * Abundance) %>%
   mutate(weighted_seed_mass = seed_mass * Abundance) %>%
-  mutate(weighted_n = leaf_n * Abundance) %>%
+  mutate(weighted_n = leaf_n * Abundance) %>% 
   group_by(climate, treatment, Block) %>% # grouping by climate, treatment, and block
   summarise_all(mean, na.rm = TRUE) %>% # finding the mean, skipping over NA values
   dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
@@ -28,7 +31,9 @@ cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datash
 # adding log transformation for seed mass & leaf n
 cwm_traits_adj <- cwm_traits_adj %>% 
   mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
-  mutate(log_n = log(weighted_n))
+  mutate(log_n = log(weighted_n)) %>% 
+  mutate(log_sla = log(weighted_sla)) %>% 
+  mutate(log_la = log(weighted_la))
 
 ```
 
@@ -63,291 +68,264 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
 
 #### a) LA CWM
 
-- Averaged over treatment, climate is different between Arid-Int and Arid-Mesic
-- Averaged over climate, treatment is different between Open-Total and Partial-Total, but not Open-Partial
-- Arid Total LA CWM larger than all other plots
-- Arid:
-    - Arid Total > Arid Open and Arid Partial
-    - No difference between Arid Open and Arid Partial
-- Intermediate:
-    - No difference between herbivore treatments
-- Mesic:
-    - No difference between herbivore treatments
-- Total herbivore treatment:
-    - Arid Total larger than Intermediate Total and Mesic Total
-    - No difference between Int Total and Mesic Total
-- No differences between Open or Partial Treatments across climates
-
 ```{r}
-# Best fit model:
-LA_CWM <- glm(data = cwm_traits_adj, weighted_la ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(LA_CWM) #best model: weighted_la ~ climate * treatment
+
+# # climate model:
+# LA_CWM_1 <- lm(data = cwm_traits_adj, weighted_la ~ climate)
+# 
+# # treatment model:
+# LA_CWM_2 <- lm(data = cwm_traits_adj, weighted_la ~ treatment)
+# 
+# # interaction model:
+# LA_CWM_3 <- lm(data = cwm_traits_adj, weighted_la ~ climate * treatment)
+# 
+# # no interaction
+# LA_CWM_4 <- lm(data = cwm_traits_adj, weighted_la ~ climate + treatment)
+# 
+# # null model:
+# LA_CWM_5 <- lm(data = cwm_traits_adj, weighted_la ~ 1)
+# 
+# AICc(LA_CWM_1, LA_CWM_2, LA_CWM_3, LA_CWM_4, LA_CWM_5) #best model: weighted_la ~ climate * treatment
+# 
+# # Checking data
+# simulateResiduals(LA_CWM_3, plot = T) # not good
+
+
+# log transformation
+# climate model:
+LA_CWM_1 <- lm(data = cwm_traits_adj, log_la ~ climate)
+
+# treatment model:
+LA_CWM_2 <- lm(data = cwm_traits_adj, log_la ~ treatment)
+
+# interaction model:
+LA_CWM_3 <- lm(data = cwm_traits_adj, log_la ~ climate * treatment)
+
+# no interaction
+LA_CWM_4 <- lm(data = cwm_traits_adj, log_la ~ climate + treatment)
+
+# null model:
+LA_CWM_5 <- lm(data = cwm_traits_adj, log_la ~ 1)
+
+AICc(LA_CWM_1, LA_CWM_2, LA_CWM_3, LA_CWM_4, LA_CWM_5) #best model: weighted_la ~ climate * treatment
 
 # Checking data
-simulateResiduals(LA_CWM, plot = T)
-shapiro.test(residuals(LA_CWM)) #normal
+simulateResiduals(LA_CWM_3, plot = T) # good
+shapiro.test(residuals(LA_CWM_3)) # normal
 
-# pairwise comparisons
-emmeans(LA_CWM, pairwise ~ climate * treatment)
+# variances are equal
+leveneTest(data = cwm_traits_adj, log_la ~ climate * treatment) 
 
-#visualization
+# significane & comparisons
+summary(LA_CWM_3)
+anova(LA_CWM_3)
+n_aov <- aov(LA_CWM_3)
+TukeyHSD(n_aov)
+emmeans(n_aov, pairwise ~ climate + treatment)
 
-# data <- as.data.frame(test$emmeans) %>%
-#   mutate(upper_limit = emmean +  SE) %>%
-#   mutate(lower_limit = emmean -  SE)
-# 
-# ggplot(data, aes(x = climate, y = emmean)) +
-#   geom_point()+
-#   facet_wrap(data$treatment)+
-# # geom_ribbon(aes(ymin = data$lower_limit, ymax = data$upper_limit), linetype=2, alpha=0.1)
-# # geom_errorbar(aes(ymin = data$lower_limit, ymax = data$upper_limit)
-#   geom_pointrange(aes(ymin = data$lower_limit, ymax = data$upper_limit))
-#   
+la_comparisons <- as.data.frame(TukeyHSD(n_aov)$'climate:treatment') %>% 
+  rename(p_value = 'p adj') %>% 
+  dplyr::filter(p_value <= 0.05)
 
-# plot(pairs(emmeans(LA_CWM, ~ climate | treatment)), comparisons = TRUE)
+# pairwise comparison plots
+plot(emmeans(n_aov, ~ climate + treatment)) 
+emmeans(LA_CWM_3, pairwise ~ climate * treatment)
 
-# plot(emmeans(LA_CWM, ~ climate * treatment), 
-#      type = "response", 
+# plot(emmeans(LA_CWM_3, ~ climate * treatment),
+#      type = "response",
 #      comparisons = TRUE, # If arrows overlap, they are not statistically significant
 #      colors = c("black", "black", "blue", "black")) + # color names for estimates, CIs, PIs, and comparison arrows, respectively
-#   # this is a ggplot so you can customize as normal
-#   theme_bw() +   
+#   theme_bw() +  # this is a ggplot so you can customize as normal
 #   labs(x = "Estimated marginal mean (LA CWM)", y = "Climate")
 
-#Compact Letter Display
-la_emm <- emmeans(LA_CWM, ~ climate)
-la_cdf <- multcomp::cld(la_emm, alpha = 0.05, Letters = LETTERS)
-
-# pretty_table <- la_data_1 %>% 
-#   as_tibble() %>% 
-#   gt(rowname_col = "contrast", groupname_col = "functional_group") %>% 
-#   tab_header(
-#     title = "Climate by Functional Group") %>% 
-#   fmt_number("p.value", decimal = 4) %>% 
-#   tab_style(
-#     style = cell_text(weight = "bold"),
-#     locations = cells_body(
-#       columns = vars(p.value),
-#       rows = p.value <= 0.05)
-#   )
-
 ```
-##### i. double-checking against ANOVA results
-```{r}
-# double-checking against anova results
-LA_aov <- aov(data = cwm_traits_adj, weighted_la ~ climate * treatment)
-
-dredge(LA_aov)
-simulateResiduals(LA_aov, plot = T)
-shapiro.test(residuals(LA_aov))
-
-summary(LA_aov)
-tukey_LA <- TukeyHSD(LA_aov)
-TukeyHSD(LA_aov)
-```
-
 
 #### b. SLA CWM
 
-- Once again, Arid Total larger than almost all other treatments
-- Arid trends:
-    - Arid Total larger than Arid Open and Arid Partial
-    - No significant difference between Arid Total & Partial
-- No different between Intermediate herbivore treatments
-- No difference between Mesic herbivore treatments
-- For Total exclosures, almost follows Arid > Int > Mesic
-    - Arid Total > Mesic Total
-    - Arid Total > Int total (almost significant, p=0.0546)
-    - Int Total > Mesic Total
-- Other significant difference:
-    - Arid Open > Mesic Open
-
 ```{r}
-# best fit model
-SLA_CWM <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
-# SLA_CWM <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail) 
-dredge(SLA_CWM) #best model: weighted_sla ~ climate * treatment
+# interaction model
+SLA_CWM_1  <- lm(data = cwm_traits_adj, weighted_sla ~ climate * treatment) 
+sla_glm <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
 
-# testing data
-simulateResiduals(SLA_CWM, plot= T) #looks good
-shapiro.test(residuals(SLA_CWM)) #normal
+# no interaction
+SLA_CWM_2  <- lm(data = cwm_traits_adj, weighted_sla ~ climate + treatment) 
 
-SLA_sig_pairs <- as.data.frame(pairs(emmeans(SLA_CWM, ~climate * treatment)))%>% 
-  filter(p.value <= 0.05)
+# climate model
+SLA_CWM_3  <- lm(data = cwm_traits_adj, weighted_sla ~ climate) 
 
-emmeans(SLA_CWM, pairwise ~ climate)
-emmeans(SLA_CWM, pairwise ~ treatment)
-emmeans(SLA_CWM, pairwise ~ climate * treatment)
-TukeyHSD(LA_aov)
+# treatment model
+SLA_CWM_4  <- lm(data = cwm_traits_adj, weighted_sla ~ treatment) 
 
+# null model
+SLA_CWM_5  <- lm(data = cwm_traits_adj, weighted_sla ~ 1) 
 
-plot(emmeans(SLA_CWM, pairwise ~ treatment * climate), comparisons = TRUE)
+AICc(SLA_CWM_1, SLA_CWM_2, SLA_CWM_3, SLA_CWM_4, SLA_CWM_5) # best model is interaction model
 
-sla_emm <- emmeans(SLA_CWM, ~ climate)
-multcomp::cld(sla_emm, alpha = 0.05, Letters = LETTERS)
+# Checking data
+simulateResiduals(SLA_CWM_1, plot = T) # good
+shapiro.test(residuals(SLA_CWM_1)) # normal
+
+# variances are equal
+leveneTest(data = cwm_traits_adj, weighted_sla ~ climate * treatment) 
+
+# significance & comparisons
+summary(SLA_CWM_1)
+anova(SLA_CWM_1)
+sla_aov <- aov(SLA_CWM_1)
+TukeyHSD(sla_aov)
+emmeans(SLA_CWM_1, pairwise ~ climate * treatment)
+plot(emmeans(SLA_CWM_1, ~ climate * treatment))
 
 ```
 
 #### c. LDMC CWM
 
-- Same trend observed between all climates
-- Same trend observed between all treatments
-- Arid:
-    - Arid-Partial < Arid-Total
-    - No difference between Partial and Open
-    - No difference between Total and Open
-- Int:
-   - Int-Partial < Int-Total
-   - No difference between Partial and Open
-   - No difference between Total and Open
-- Mesic: 
-    - Mesic-Partial < Mesic-Total
-    - No difference between Partial and Open
-    - No difference between Total and Open
-- Open treatment:
-    - Int-Open > Arid-Open
-    - Int-Open > Mesic-Open
-    - No difference between Arid-Open and Mesic-Open
-- Partial Treatment:
-    - Int-Partial > Arid-Partial
-    - Int-Partial > Mesic-Partial
-    - No difference between Arid-Partial and Mesic-Partial
-- Total Treatment:
-    - Int-Total > Arid-Total
-    - Int-Total > Mesic-Total
-    - No difference between Arid-Total and Mesic-Total
-
 ```{r}
-LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment, family = gaussian, na.action = na.fail) 
-dredge(LDMC_CWM) #best model: weighted_ldmc ~ climate + treatment
-LDMC_CWM <- glm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment, family = gaussian, na.action = na.fail) 
+# interaction model
+LDMC_CWM_1 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment)
 
-simulateResiduals(LDMC_CWM, plot= T) #looks good
-shapiro.test(residuals(LDMC_CWM)) #normal
+# no interaction model
+LDMC_CWM_2 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment)
 
-LDMC_sig_pairs <- as.data.frame(pairs(emmeans(LDMC_CWM, ~climate + treatment))) %>% 
-  filter(p.value <= 0.05)
+# climate model
+LDMC_CWM_3 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate)
 
-emmeans(LDMC_CWM, pairwise ~ climate)
-emmeans(LDMC_CWM, pairwise ~ treatment)
-emmeans(LDMC_CWM, pairwise ~ climate + treatment)
+# treatment model
+LDMC_CWM_4 <- lm(data = cwm_traits_adj, weighted_ldmc ~treatment)
 
-plot(emmeans(LDMC_CWM, pairwise ~ treatment + climate), comparisons = TRUE)
-multcomp::cld(emmeans(LDMC_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
+# null model
+LDMC_CWM_5 <- lm(data = cwm_traits_adj, weighted_ldmc ~ 1)
+
+AICc(LDMC_CWM_1, LDMC_CWM_2, LDMC_CWM_3, LDMC_CWM_4, LDMC_CWM_5) # best fit model is not interaction
+
+simulateResiduals(LDMC_CWM_2, plot= T) #looks good
+shapiro.test(residuals(LDMC_CWM_2)) #normal
+
+# variances are equal
+leveneTest(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment) 
+
+# significance & comparisons
+summary(LDMC_CWM_2)
+anova(LDMC_CWM_2)
+sla_aov <- aov(LDMC_CWM_2)
+TukeyHSD(sla_aov)
+emmeans(LDMC_CWM_2, pairwise ~ climate + treatment)
+emmeans(LDMC_CWM_2, pairwise ~ climate)
+emmeans(LDMC_CWM_2, pairwise ~ treatment)
+emmeans(LDMC_CWM_2, pairwise ~ climate + treatment)
+plot(emmeans(LDMC_CWM_2, ~ climate + treatment))
 
 ```
 
 #### d. Seed mass CWM
 
-- same trend observed across climates
-- same trend observed across herbivore treatments
--Arid
-    - Arid-Total > Arid-Open
-    - No difference between Arid-Open and Arid-Partial
-    - No difference between Arid-Partial and Arid-Total
-- Int
-    -Int-Total > Int-Open
-    - No difference between Int-Open and Int-Partial
-    - No difference between Int-Partial and Int-Total
-- Mesic
-    -Mesic-Total > Mesic-Open
-    - No difference between Mesic-Open and Mesic-Partial
-    - No difference between Mesic-Partial and Mesic-Total
-- Open:
-  - Int Open > Mesic-Open
-  - No difference between Arid and Mesic
-- Partial:
-    - Int-Partial > Mesic-Partial
-    - No difference between Arid and Mesic
-- Total:
-    - Int-Total > Mesic-Total
-    - No difference between Arid and Mesic
-
 ```{r}
-# seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
-# dredge(seed_mass_CWM) #best model: weighted_seed_mass ~ cliamte + treatment
-# seed_mass_CWM <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-# simulateResiduals(seed_mass_CWM, plot= T) #model predictions look a little wonky, but it says it's good.  I'm also getting something saying that "outer Newton did not converge fully?
-# shapiro.test(residuals(seed_mass_CWM)) # not normal
+# # interaction model
+# seed_mass_CWM_1 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+# 
+# # no interaction model
+# seed_mass_CWM_2 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+# 
+# # climate model
+# seed_mass_CWM_3 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate, family = gaussian, na.action = na.fail)
+# 
+# # treatment model
+# seed_mass_CWM_4 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ treatment, family = gaussian, na.action = na.fail)
+# 
+# # null model
+# seed_mass_CWM_5 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ 1, family = gaussian, na.action = na.fail)
+# 
+# AICc(seed_mass_CWM_1, seed_mass_CWM_2, seed_mass_CWM_3, seed_mass_CWM_4, seed_mass_CWM_5) # lowest AICc is no interacito model
+# 
+# simulateResiduals(seed_mass_CWM_2, plot= T) # not good
+# shapiro.test(residuals(seed_mass_CWM_2)) # not normal
+
 
 # log transformation
-log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(log_seed_mass) #best model: weighted_seed_mass ~ cliamte + treatment
-log_seed_mass <- glm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(log_seed_mass, plot= T) #looks ok
-shapiro.test(residuals(log_seed_mass)) #normal
+# interaction model
+seed_mass_CWM_1 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment)
 
-#pairwise comparisons
-seed_sig_pairs <-  as.data.frame(pairs(emmeans(log_seed_mass, ~ climate + treatment))) %>% 
-  filter(p.value <= 0.05)
+# no interaction model
+seed_mass_CWM_2 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment)
 
-emmeans(log_seed_mass, pairwise ~ climate)
-emmeans(log_seed_mass, pairwise ~ treatment)
-emmeans(log_seed_mass, pairwise ~ climate + treatment)
+# climate model
+seed_mass_CWM_3 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate)
 
-plot(emmeans(log_seed_mass, pairwise ~ treatment + climate))
-multcomp::cld(emmeans(log_seed_mass, ~ treatment), alpha = 0.05, Letters = LETTERS)
+# treatment model
+seed_mass_CWM_4 <- lm(data = cwm_traits_adj, log_seed_mass ~ treatment)
+
+# null model
+seed_mass_CWM_5 <- lm(data = cwm_traits_adj, log_seed_mass ~ 1)
+
+AICc(seed_mass_CWM_1, seed_mass_CWM_2, seed_mass_CWM_3, seed_mass_CWM_4, seed_mass_CWM_5) # lowest AICc is no interaction model
+
+# residuals are normal
+simulateResiduals(seed_mass_CWM_2, plot= T) #looks good
+shapiro.test(residuals(seed_mass_CWM_2)) #normal
+
+# variances are equal
+leveneTest(data = cwm_traits_adj, log_seed_mass ~ climate * treatment) 
+
+# significance & comparisons
+summary(seed_mass_CWM_2)
+anova(seed_mass_CWM_2)
+seed_aov <- aov(seed_mass_CWM_2)
+TukeyHSD(seed_aov)
+emmeans(seed_mass_CWM_2, pairwise ~ climate + treatment)
+emmeans(seed_mass_CWM_2, pairwise ~ climate)
+emmeans(seed_mass_CWM_2, pairwise ~ treatment)
+emmeans(seed_mass_CWM_2, pairwise ~ climate + treatment)
+plot(emmeans(seed_mass_CWM_2, ~ climate + treatment))
+
 
 ```
 
 #### e. Leaf-N CWM
 
-- No difference between any of the different herbivore treatments within climates
-- Same pattern observed between treatments at different climates
-
-- Arid:
-    - No difference between treatments at Arid
-- Int:
-     - No difference between  treatments at Int
-- Mesic:
-    - No difference between treatments at Mesic
-- Open:
-    - Arid-Open > Mesic-Open
-    - Int-Open > Mesic-Open
-- Partial:
-    - Arid-Partial > Mesic-Partial
-    - Int-Partial > Mesic-Partial
-- Total:
-    - Arid-Total > Mesic-Total
-    - Int-Total > Mesic-Total
-
 ```{r} 
-# leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
-# dredge(leaf_n_CWM) #best model: weighted_n ~ climate + treatment
-# leaf_n_CWM <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
-# 
-# simulateResiduals(leaf_n_CWM, plot= T) #looks bad
-# shapiro.test(residuals(leaf_n_CWM)) #not normal
 
-#log transformation
-log_n_CWM <- glm(data = cwm_traits_adj, log_n ~ climate * treatment, family = gaussian, na.action = na.fail) 
-dredge(log_n_CWM) #get: Fixed terms are "cond((Int))" and "disp((Int))"
-log_n_CWM <- glm(data = cwm_traits_adj, log_n ~ climate + treatment, family = gaussian, na.action = na.fail) 
+# interaction model
+n_CWM_1 <- lm(data = cwm_traits_adj, weighted_n ~ climate * treatment)
+# n_CWM_1 <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(log_n_CWM, plot= T) #doesn't look very good
-shapiro.test(residuals(log_n_CWM)) #p = 0.05924
+# no interaction model
+n_CWM_2 <- lm(data = cwm_traits_adj, weighted_n ~ climate + treatment)
+# n_CWM_2 <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail)
 
-# Model summary
-emmeans(log_n_CWM, ~climate + treatment)
-LNC_pairs <-  as.data.frame(pairs(emmeans(log_n_CWM, ~ climate + treatment)))
-LNC_sig_pairs <- LNC_pairs %>% 
-  filter(p.value <= 0.05)
+# climate model
+n_CWM_3 <- lm(data = cwm_traits_adj, weighted_n ~ climate)
+# n_CWM_3 <- glm(data = cwm_traits_adj, weighted_n ~ climate, family = gaussian, na.action = na.fail)
 
-emmeans(log_n_CWM, pairwise ~ climate + treatment)
+# treatment model
+n_CWM_4 <- lm(data = cwm_traits_adj, weighted_n ~ treatment)
+# n_CWM_4 <- glm(data = cwm_traits_adj, weighted_n ~ treatment, family = gaussian, na.action = na.fail)
 
-# log_n_contrasts <- as.data.frame(summary(emmeans(log_n_CWM, pairwise ~ climate  treatment))) %>% 
-#   dplyr::select(contrasts.contrast, contrasts.treatment, contrasts.estimate, contrasts.p.value) %>% 
-#   mutate(significance = ifelse(contrasts.p.value < 0.05, "*", " ")) %>% 
-#   rename(Climates = "contrasts.contrast", Treatment = contrasts.treatment, Estimate = contrasts.estimate, "p-value" = contrasts.p.value)
+# intercept model
+n_CWM_5 <- lm(data = cwm_traits_adj, weighted_n ~ 1)
+# n_CWM_5 <- glm(data = cwm_traits_adj, weighted_n ~ 1, family = gaussian, na.action = na.fail)
 
-# write.csv(log_n_contrasts, file = "~/github/Tejon_Functional_Traits/Datasheets/log_n_contrasts.", row.names = FALSE)
+AICc(n_CWM_1, n_CWM_2, n_CWM_3, n_CWM_4, n_CWM_5) # best is no interaction
 
-plot(emmeans(log_n_CWM, pairwise ~ treatment + climate))
-multcomp::cld(emmeans(log_n_CWM, ~ treatment), alpha = 0.05, Letters = LETTERS)
+# residuals are normal
+shapiro.test(residuals(n_CWM_2)) 
+qqPlot(residuals(n_CWM_2))
 
-summary(lm(data = cwm_traits_adj, log_n ~ climate + treatment))
+# variances are equal
+leveneTest(data = cwm_traits_adj, weighted_n ~ climate * treatment) 
+
+# significance & comparisons
+summary(n_CWM_2)
+anova(n_CWM_2)
+n_aov <- aov(n_CWM_2)
+TukeyHSD(n_aov)
+
+emmeans(n_CWM_2, pairwise ~ climate)
+emmeans(n_CWM_2, pairwise ~ treatment)
+emmeans(n_CWM_2, pairwise ~ climate + treatment)
+plot(emmeans(n_CWM_2, ~ climate + treatment))
+
 ```
 
 #### f. Best-fit Model Table
