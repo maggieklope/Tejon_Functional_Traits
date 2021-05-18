@@ -1,0 +1,221 @@
+---
+title: "CWM_climate_data"
+author: "Maggie Klope"
+date: "5/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# loading packages
+packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt")
+(lapply(packages, library, character.only = TRUE))
+
+# loading trait data
+other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
+
+cwm_traits_adj <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+  left_join(other_traits, by = "species_name") %>% 
+  mutate(weighted_la = leaf_area * Abundance) %>% # multiplying trait values by species abundance
+  mutate(weighted_sla = sla * Abundance) %>% 
+  mutate(weighted_ldmc = ldmc * Abundance) %>%
+  mutate(weighted_seed_mass = seed_mass * Abundance) %>%
+  mutate(weighted_n = leaf_n * Abundance) %>%
+  group_by(climate, treatment, Block) %>% # grouping by climate, treatment, and block
+  summarise_all(mean, na.rm = TRUE) %>% # finding the mean, skipping over NA values
+  dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+
+# adding log transformation for seed mass & leaf n
+cwm_traits_adj <- cwm_traits_adj %>% 
+  mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
+  mutate(log_n = log(weighted_n))
+
+# loading climate data
+climate_data <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/plot_climate_data.csv") %>% 
+  rename(Block = block)
+
+# joining trait data with climate data
+cwm_traits_adj <- cwm_traits_adj %>% 
+  left_join(climate_data, by = c("climate", "treatment", "Block")) %>% 
+  mutate(log_la = log(weighted_la)) %>% 
+  mutate(log_sla = log(weighted_sla)) %>% 
+  mutate(sqrt_sla = sqrt(weighted_sla)) %>% 
+  mutate(one_div_sqrt_sla = 1 / (sqrt(weighted_sla)))
+
+```
+
+- Calculated with 2017 trait data
+- Only one block sampled at each climate/treatment, so no blocking effect
+- Using total annual precip and mean annual temp from PRISM interpolated 4 km data from 2997-2017
+
+### Questions:
+
+**What is the effect of precip, temp and grazing on community-weighted means?**
+
+**Is there an interaction between climate and grazing?**
+
+### Models:
+
+#### a) LA CWM
+```{r}
+ggplot(cwm_traits_adj, aes(y = ppt_mm, x = climate))+
+  geom_boxplot(aes(fill = treatment))+
+  facet_wrap(~climate)
+
+ggplot(cwm_traits_adj, aes(y = tmean_C, x = climate))+
+  geom_boxplot(aes(fill = treatment))+
+  facet_wrap(~climate)
+
+ggplot(cwm_traits_adj, aes(y = tmean_C, x = ppt_mm))+
+  geom_point()
+
+# null
+LA_11 <-  lm(data = cwm_traits_adj, weighted_la ~ 1)
+simulateResiduals(LA_11, plot = T) # not good
+shapiro.test(residuals(LA_11)) # not normal
+LA_12 <-  lm(data = cwm_traits_adj, log_la ~ 1)
+simulateResiduals(LA_12, plot = T) # ok
+shapiro.test(residuals(LA_12)) # normal
+
+# by treatment
+LA_1 <- lm(data = cwm_traits_adj, weighted_la ~ treatment)
+simulateResiduals(LA_1, plot = T) # ok
+shapiro.test(residuals(LA_1)) # not normal
+LA_2 <- lm(data = cwm_traits_adj, log_la ~ treatment)
+simulateResiduals(LA_2, plot = T) # good
+shapiro.test(residuals(LA_2)) # normal
+
+# by precip
+LA_3 <- lm(data = cwm_traits_adj, weighted_la ~ ppt_mm)
+simulateResiduals(LA_3, plot = T) # not ok
+shapiro.test(residuals(LA_3)) # normal
+LA_4 <- lm(data = cwm_traits_adj, log_la ~ ppt_mm)
+simulateResiduals(LA_4, plot = T) # good
+shapiro.test(residuals(LA_4)) # normal
+
+# by temp
+LA_5 <- lm(data = cwm_traits_adj, weighted_la ~ tmean_C)
+simulateResiduals(LA_5, plot = T) # ok
+shapiro.test(residuals(LA_5)) # normal
+LA_6 <- lm(data = cwm_traits_adj, log_la ~ tmean_C)
+simulateResiduals(LA_6, plot = T) # good
+shapiro.test(residuals(LA_6)) # normal
+
+# by treatment * precip
+LA_7 <- lm(data = cwm_traits_adj, weighted_la ~ treatment * ppt_mm)
+simulateResiduals(LA_7, plot = T) # good
+shapiro.test(residuals(LA_7)) # normal
+LA_7 <- lm(data = cwm_traits_adj, log_la ~ treatment * ppt_mm)
+simulateResiduals(LA_7, plot = T) # good
+shapiro.test(residuals(LA_7)) # normal
+
+# by treatment * temp
+LA_8 <- lm(data = cwm_traits_adj, weighted_la ~ treatment + treatment:tmean_C)
+LA_8 <- lm(data = cwm_traits_adj, weighted_la ~ treatment * tmean_C)
+simulateResiduals(LA_8, plot = T) # good
+shapiro.test(residuals(LA_8)) # normal
+LA_8 <- lm(data = cwm_traits_adj, log_la ~ treatment * tmean_C)
+simulateResiduals(LA_8, plot = T) # good
+shapiro.test(residuals(LA_8)) # normal
+
+# LA_9 <- lm(data = cwm_traits_adj, weighted_la ~ treatment + treatment:ppt_mm + treatment:tmean_C)
+# simulateResiduals(LA_9, plot = T) # ok
+# shapiro.test(residuals(LA_9)) # normal
+# LA_10 <- lm(data = cwm_traits_adj, log_la ~ treatment + treatment:ppt_mm + treatment:tmean_C)
+# simulateResiduals(LA_10, plot = T) # good
+# shapiro.test(residuals(LA_10)) # normal
+
+# by treatment * precip + treatment * temp
+# LA_13 <- lm(data = cwm_traits_adj, log_la ~ treatment + ppt_mm + treatment:ppt_mm + tmean_C + treatment:tmean_C)
+# simulateResiduals(LA_13, plot = T) # good
+# shapiro.test(residuals(LA_13)) # normal
+
+AICc(LA_1, LA_2, LA_3, LA_4, LA_5, LA_6, LA_7, LA_8, LA_9, LA_11, LA_12)
+
+AICc(LA_1, LA_2, LA_3, LA_4, LA_5, LA_6, LA_7, LA_8, LA_9, LA_11, LA_12) %>% 
+  slice(which.min(AICc))
+
+summary(LA_13)
+anova(LA_13)
+coef(LA_13)
+# confint(LA_13)
+# summary(LA_13)$r.squared
+
+install.packages("interactions")
+interactions::interact_plot(LA_13, pred = tmean_C, modx = treatment, mod2 = ppt_mm)
+
+# LA_aov <- aov(data = cwm_traits_adj, log_la ~ treatment + treatment:ppt_mm + treatment:tmean_C)
+# TukeyHSD(LA_aov)
+# 
+means = emmeans(LA_13,~ treatment + treatment:ppt_mm + treatment:tmean_C, type="response")
+summary(means)
+emmeans(LA_13, pairwise ~ treatment)
+emmeans(LA_13, pairwise ~ treatment * ppt_mm)
+emmeans(LA_13, pairwise ~ treatment * tmean_C)
+
+
+```
+#### b. SLA CWM
+
+```{r}
+SLA_1 <- lm(data = cwm_traits_adj, weighted_sla ~ treatment)
+simulateResiduals(SLA_1, plot = T) # ok
+shapiro.test(residuals(SLA_1)) # normal
+
+SLA_2 <- lm(data = cwm_traits_adj, weighted_sla ~ ppt_mm)
+simulateResiduals(SLA_2, plot = T) # not ok
+shapiro.test(residuals(SLA_2)) # normal
+SLA_3 <- lm(data = cwm_traits_adj, log_sla ~ ppt_mm)
+simulateResiduals(SLA_3, plot = T) # not good
+shapiro.test(residuals(SLA_3)) # normal
+boxCox(SLA_2)
+SLA_4 <- lm(data = cwm_traits_adj, sqrt_sla ~ ppt_mm)
+simulateResiduals(SLA_4, plot = T) # not good
+shapiro.test(residuals(SLA_4)) # normal
+SLA_13 <- lm(data = cwm_traits_adj, one_div_sqrt_sla ~ ppt_mm)
+simulateResiduals(SLA_13, plot = T) # not good
+shapiro.test(residuals(SLA_13)) # normal
+
+
+SLA_5 <- lm(data = cwm_traits_adj, weighted_sla ~ tmean_C)
+simulateResiduals(LA_5, plot = T) # ok
+shapiro.test(residuals(LA_5)) # normal
+# SLA_6 <- lm(data = cwm_traits_adj, log_sla ~ tmean_C)
+# simulateResiduals(LA_6, plot = T) # good
+# shapiro.test(residuals(LA_6)) # normal
+
+SLA_7 <- lm(data = cwm_traits_adj, weighted_sla ~ treatment * ppt_mm)
+simulateResiduals(SLA_7, plot = T) # good
+shapiro.test(residuals(SLA_7)) # not normal
+SLA_12 <- lm(data = cwm_traits_adj, log_sla ~ treatment * ppt_mm)
+simulateResiduals(SLA_12, plot = T) # good
+shapiro.test(residuals(SLA_12)) # not normal
+
+SLA_8 <- lm(data = cwm_traits_adj, weighted_sla ~ treatment * tmean_C)
+simulateResiduals(SLA_8, plot = T) # good
+shapiro.test(residuals(SLA_8)) # normal
+
+# SLA_9 <- lm(data = cwm_traits_adj, weighted_sla ~ treatment + treatment:ppt_mm + treatment:tmean_C)
+# simulateResiduals(SLA_9, plot = T) # ok
+# shapiro.test(residuals(SLA_9)) # normal
+# SLA_10 <- lm(data = cwm_traits_adj, log_sla ~ treatment + treatment:ppt_mm + treatment:tmean_C)
+# simulateResiduals(SLA_10, plot = T) # good
+# shapiro.test(residuals(SLA_10)) # normal
+
+SLA_11 <- SLA_10 <- lm(data = cwm_traits_adj, log_sla ~ treatment + ppt_mm + treatment:ppt_mm + tmean_C+ treatment:tmean_C)
+simulateResiduals(SLA_11, plot = T) # good
+shapiro.test(residuals(SLA_11)) # normal
+
+AICc(SLA_1, SLA_2, SLA_3, SLA_4, SLA_5, SLA_7, SLA_8, SLA_11, SLA_12, SLA_13)
+
+AICc(SLA_1, SLA_2, SLA_3, SLA_4, SLA_5, SLA_6, SLA_7, SLA_8, SLA_9, SLA_10) %>% 
+  slice(which.min(AICc))
+
+summary(SLA_11)
+anova(SLA_11)
+interactions::interact_plot(SLA_10, pred = tmean_C, modx = treatment, mod2 = ppt_mm)
+interactions::interact_plot(SLA_10, pred = tmean_C, modx = treatment)
+interactions::interact_plot(SLA_10, pred =  ppt_mm, modx = treatment)
+```
+
