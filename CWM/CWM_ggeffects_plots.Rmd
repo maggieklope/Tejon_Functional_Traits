@@ -47,20 +47,22 @@ CWM_emmeans <- grid.arrange(LA_CWM_plot, SLA_CWM_plot, LDMC_CWM_plot, log_seed_m
 ### a. testing
 ```{r}
 # testing
-predict <- ggpredict(LA_CWM, terms = c("treatment", "climate"))
+predict <- ggpredict(LA_CWM_3, terms = c("treatment", "climate"))
 test <- as.data.frame(predict)
 
-anno <- as.data.frame(summary(emmeans(LA_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>%
+anno <- as.data.frame(summary(emmeans(LA_CWM_3, specs = pairwise ~ climate * treatment))$contrasts) %>%
   filter(p.value <= 0.05) %>%
   separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
-  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>%
-  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>%
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = " ") %>%
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = " ") %>%
   filter(plot_1_climate == plot_2_climate) %>%
   rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
   mutate(label = ifelse(p.value > .05, "*",
                         ifelse(p.value <= 0.01, "**",
                                ifelse(p.value <= 0.001, "***", "****")))) %>%
   dplyr::select(group, start, end, label)
+
+# View(anno)
 
 ggplot(test, aes(x, predicted, color = group)) +
   geom_point() +
@@ -82,9 +84,9 @@ ggplot(test, aes(x, predicted, color = group)) +
   labs(title = "Title", y = "unit", x = "Herbivore Treatment") +
   geom_signif(
     data = anno,
-    aes(xmin = start, xmax = end, annotations = label, y_position = c(90, 97)),
+    aes(xmin = start, xmax = end, annotations = label, y_position = 5),
     color = "black",
-    manual = TRUE) +
+  manual = TRUE) +
   facet_grid(~group)
 ```
 ## writing the function
@@ -100,18 +102,18 @@ graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 2
   test <- as.data.frame(predict)
   
   # creating annotation data frame that will be used by geom_signif to get around the facet_wrap() problem
-  anno <- as.data.frame(summary(emmeans(model_name, specs = pairwise ~ climate + treatment))$contrasts) %>% 
-    filter(p.value <= 0.05) %>% 
-    separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>% 
-    separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>% 
-    separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>% 
-    filter(plot_1_climate == plot_2_climate) %>% 
-    rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>% 
-    mutate(label = ifelse(p.value > .05, "*", 
-                          ifelse(p.value <= 0.01, "**",
-                                 ifelse(p.value <= 0.001, "***", "****")))) %>% 
+  anno <- as.data.frame(summary(emmeans(model_name, specs = pairwise ~ climate * treatment))$contrasts) %>% 
+      filter(p.value <= 0.05) %>%
+    separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
+    separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = " ") %>%
+    separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = " ") %>%
+    filter(plot_1_climate == plot_2_climate) %>%
+    rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
+    mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>%
     dplyr::select(group, start, end, label)
-  
+
   print(anno)
   
   ggplot(test, aes(x, predicted, color = group)) +
@@ -145,61 +147,61 @@ graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 2
 
 ### b. Leaf Area
 ```{r}
-la <- graphs(model_name = LA_CWM,
+
+la <- graphs(model_name = LA_CWM_3,
        model_terms = c("treatment", "climate"),
        plot_title = "Leaf Area CWM",
        y_label = "Predicted Leaf Area CWM",
-       y_positions = c(90, 98))
+       y_positions = c(5, 4, 4, 4.75, 3.75))
 
 la
 ```
 
 ### c. Specific Leaf Area
 ```{r}
-sla <- graphs(model_name = SLA_CWM,
+sla <- graphs(model_name = SLA_CWM_1,
        model_terms = c("treatment", "climate"),
        plot_title = "Specific Leaf Area CWM",
        y_label = "Predicted Specific Leaf Area CWM",
-       y_positions = c(4.5, 5))
+       y_positions = c(5, 4.5))
 
 sla
 ```
 
 ### d. Leaf Dry Matter Content
 ```{r}
-ldmc <- graphs(model_name = LDMC_CWM,
+ldmc <- graphs(model_name = LDMC_CWM_2,
        model_terms = c("treatment", "climate"),
        plot_title = "Leaf Dry Matter Content CWM",
        y_label = "Predicted Leaf Dry Matter Content CWM",
-       y_positions = c(50, 60, 45))
+       y_positions = c(48, 60, 47))
 
 ldmc
 ```
 
 ### e. Seed Mass
 ```{r}
-seed_mass <- graphs(model_name = log_seed_mass,
+seed_mass <- graphs(model_name = seed_mass_CWM_2,
        model_terms = c("treatment", "climate"),
        plot_title = "Seed Mass CWM",
        y_label = "Predicted log(Seed Mass CWM)",
-       y_positions = c(0, .25, -.5))
+       y_positions = c(-.1, .25, -.4))
 
 seed_mass
 ```
 
 ### f. Leaf N
 ```{r}
+# no significant differences, so doing manually
 
-# no significant difference, so doing manually
-
-predict <- ggpredict(log_n_CWM, terms = c("treatment", "climate"))
+predict <- ggpredict(n_CWM_2, terms = c("treatment", "climate"))
 test <- as.data.frame(predict)
 
-anno <- as.data.frame(summary(emmeans(log_n_CWM, specs = pairwise ~ climate + treatment))$contrasts) %>%
+anno <- as.data.frame(summary(emmeans(n_CWM_2, specs = pairwise ~ climate + treatment))$contrasts) %>%
   filter(p.value <= 0.05) %>%
   separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
-  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = ",") %>%
-  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = ",") %>%
+  separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = " ") %>%
+  separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = " ") %>%
   filter(plot_1_climate == plot_2_climate) %>%
   rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
   mutate(label = ifelse(p.value > .05, "*",
@@ -228,6 +230,7 @@ leaf_n <- ggplot(test, aes(x, predicted, color = group)) +
   facet_grid(~group)+
     theme(legend.position = "none")
 
+leaf_n
 
 ```
 
@@ -235,7 +238,6 @@ leaf_n <- ggplot(test, aes(x, predicted, color = group)) +
 ```{r}
 
 CWM_signif_all <- grid.arrange(la, sla, ldmc, seed_mass, leaf_n)
-CWM_signif_all
 
 ggsave("CWM_signif_all.png", plot = CWM_signif_all, path = "~/github/Tejon_Functional_Traits/Figures", height = 10, width = 10)
 
