@@ -99,7 +99,7 @@ LA_CWM_1 <- lm(data = cwm_traits_adj, log_la ~ climate)
 LA_CWM_2 <- lm(data = cwm_traits_adj, log_la ~ treatment)
 
 # interaction model:
-LA_CWM_3 <- lm(data = cwm_traits_adj, log_la ~ climate * treatment)
+LA_CWM_3 <- lm(data = cwm_traits_adj, log_la ~ climate * treatment, na.action = na.fail)
 
 # no interaction
 LA_CWM_4 <- lm(data = cwm_traits_adj, log_la ~ climate + treatment)
