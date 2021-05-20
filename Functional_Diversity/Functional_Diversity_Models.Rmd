@@ -2,7 +2,9 @@
 title: "Functional_Diversity"
 author: "Maggie Klope"
 date: "10/18/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -29,7 +31,7 @@ other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheet
 #making a df just for functional diveristy calculations
 for_FD <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
-  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>% 
+  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>%
   drop_na
 
 #abundance data in correct format:
@@ -81,7 +83,6 @@ int_total_trait <- fd_traits("Intermediate", "Total")
 mesic_open_trait <- fd_traits("Mesic", "Open")
 mesic_partial_trait <- fd_traits("Mesic", "Partial")
 mesic_total_trait <- fd_traits("Mesic", "Total")
-
 ```
 
 ```{r FD calcs, include=FALSE}
@@ -204,7 +205,8 @@ FD_all %>%
   pivot_longer(cols = c(FRic, FEve:FDis),
                names_to = "FD",
                values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
+  ggplot(aes(x = climate, y = value, fill = climate, factor = treatment)) +
+  scale_fill_manual(values = c("#f46d43", "#fee090", "#74add1")) +
   geom_boxplot() +
   theme_bw() +
   facet_wrap(~FD, scales = "free")
@@ -272,104 +274,83 @@ FD_all %>%
 ### Models
 
 #### FRic
-
-- averaged over treatment, there is a sig difference between Arid-Int and Int-Mesic, but not Arid-Mesic
-- averaged over climate, there is not sig difference between treatments
-- Arid
-    - Arid Partial > Arid Open
-    - Arid Partial > Arid Total
-    - No difference between Arid Open and Arid Total
-- Int
-    - No difference between herbivore treatments at int
-- Mesic
-  - Mesic Open > Mesic Total
-- Open
-    - Mesic Open > Arid Open 
-    - Mesic Open > Int Open
-    - no diff between arid open and int open
-- Partial
-    - Arid Partial > Intermediate Partial
-    - Arid Partial > Mesic Partial
-    - No difference between int partial and mesic partial
-- Total
-    -No difference between climates for total exclosure
     
-```{r}
-FRic <- glm(data = FD_all, FRic ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(FRic) #best model: FRic ~ climate * treatment
+```{r, warning=FALSE}
+# interaction
+FRic_1 <- glmmTMB(data = FD_all, FRic ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# does data fit model?
-simulateResiduals(FRic, plot=T) # looks ok
-shapiro.test(residuals(FRic)) # residuals are normal
+# no interaction
+FRic_2 <- glmmTMB(data = FD_all, FRic ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# significant pairs
-# FRic_sig_pairs <-  as.data.frame(pairs(emmeans(FRic, ~ climate * treatment)))%>% 
-#   filter(p.value <= 0.05)
-# FRic_sig_pairs
+# climate
+FRic_3 <- glmmTMB(data = FD_all, FRic ~ climate + (1|Block), family = gaussian, na.action = na.fail)
 
-# pairwise comparisons
-# emmeans(FRic, pairwise ~ climate * treatment)
-# emmeans(FRic, pairwise ~ climate | treatment)
-# pairs(emmeans(FRic, ~ climate | treatment)) # same thing
+# treatment
+FRic_4 <- glmmTMB(data = FD_all, FRic ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# looking at ggeffects graphs to plot marginal means
-dat <- ggpredict(FRic, terms = c("treatment", "climate"))
-plot(dat, facet = TRUE)
+# null
+FRic_5 <- glmmTMB(data = FD_all, FRic ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+AICc(FRic_1, FRic_2, FRic_3, FRic_4, FRic_5) # best model is null
+
+simulateResiduals(FRic_5, plot = T) #ok? squiggly, but no warnings
+shapiro.test(residuals(FRic_5)) # normal
 
 ```
 
 #### FEve
 
-- best fit model is intercept only
-- next best model includes climate, but there is no significance
-- I checked model fit and data distribution, and it all looked good
+```{r, warning=FALSE}
+# interaction
+FEve_1 <- glmmTMB(data = FD_all, FEve ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-```{r}
-FEve <- glm(data = FD_all, FEve ~ climate * treatment, family = gaussian, na.action = na.pass)
-dredge(FEve) #best model includes only the intercept
-FEve <- glm(data = FD_all, FEve ~ 1, family = gaussian, na.action = na.fail)
+# no interaction
+FEve_2 <- glmmTMB(data = FD_all, FEve ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# does data fit model?
-simulateResiduals(FEve, plot=T) # good
-shapiro.test(residuals(FEve)) # residuals are normal
+# climate
+FEve_3 <- glmmTMB(data = FD_all, FEve ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+
+# treatment
+FEve_4 <- glmmTMB(data = FD_all, FEve ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
+
+# null
+FEve_5 <- glmmTMB(data = FD_all, FEve ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+AICc(FEve_1, FEve_2, FEve_3, FEve_4, FEve_5) # best model is null? but followed closely by treatment
+
+simulateResiduals(FEve_5, plot = T) # looks good
+shapiro.test(residuals(FEve_5)) # normal
+
 
 ```
 
 #### FDiv
 
-- averaged over climate levels, there is a sig difference between all herbivoretreatments
-- averaged over herbivore treatment, there is a sig difference between Arid-Mesic and Int-Mesic
-- Arid
-    - Arid Open > Arid Partial
-    - Arid Total > Arid Open
-    - Arid Total > Arid Partial
-- Int
-    - Int Open > Int Partial
-    - Int Total > Int Open
-    - Int Total > Int Partial
-- Mesic
-    - No difference in treatment at mesic
-- Open
-    - No difference between climates for open treatments
-- Partial
-    - Mesic Partial > Arid Partial
-    - Mesic Partial > Int Partial
-    - No difference in int partial and arid partial
--Total
-    - No difference between climates for total exclosure
+```{r, warning=FALSE}
+# interaction
+FDiv_1 <- glmmTMB(data = FD_all, FDiv ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-```{r}
-FDiv <- glm(data = FD_all, FDiv ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(FDiv) #best model: FDiv ~ climate * treatment
+# no interaction
+FDiv_2 <- glmmTMB(data = FD_all, FDiv ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# does data fit model?
-simulateResiduals(FDiv, plot=T) # looks ok
-shapiro.test(residuals(FDiv)) # residuals are  normal
+# climate
+FDiv_3 <- glmmTMB(data = FD_all, FDiv ~ climate + (1|Block), family = gaussian, na.action = na.fail)
 
-# all pairwise comparisons
-# emmeans(FDiv, pairwise ~ climate)
-# emmeans(FDiv, pairwise ~ treatment)
-# emmeans(FDiv, pairwise ~ climate * treatment)
+# treatment
+FDiv_4 <- glmmTMB(data = FD_all, FDiv ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
+
+# null
+FDiv_5 <- glmmTMB(data = FD_all, FDiv ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+AICc(FDiv_1, FDiv_2, FDiv_3, FDiv_4, FDiv_5) #best model: FDiv ~ climate * treatment
+
+simulateResiduals(FDiv_1, plot = T) # looks good
+shapiro.test(residuals(FDiv_1)) # normal
+
+# pairwise comparisons
+emmeans(FDiv, pairwise ~ climate)
+emmeans(FDiv, pairwise ~ treatment)
+emmeans(FDiv, pairwise ~ climate * treatment)
 
 # estimated marginal means plot
 dat <- ggpredict(FDiv, terms = c("treatment", "climate"))
@@ -378,49 +359,34 @@ plot(dat, facet = TRUE)
 
 #### FDis
 
-- Averaged over treatment, sig difference between Arid-Mesic and Int-Mesic
-- Averaged over climate, sig difference between Open-Partial and Open-Total, but not Open-Partial
-- Arid
-    - Arid Total > Arid Open
-    - Arid Total > Arid Partial
-    - No difference between Open and Partial
-- Int
-    - Int Total > Int Open
-    - Int Total > Int Partial
-    - No difference between Open and Partial
-- Mesic
-    - Mesic Open > Mesic Partial
-    - No dif between Total-Open
-    - No dif between Total-Partial
-- Open
-    - Mesic Open > Arid Open
-    - Mesic Open > Int Open
-    - No differecne for Arid-Int
-- Partial
-    - Mesic Partial > Arid Partial
-    - Mesic Partial > Int Partial
-      - No differecne for Arid-Int
-- Total
-    - Int Total > Arid Total
-    - Int Total > Mesic Total
-    - No difference between Mesic-Arid
-    
-```{r}
-FDis <- glm(data = FD_all, FDis ~ climate * treatment, family = gaussian, na.action = na.fail)
-dredge(FDis) #best model: FDis ~ climate * treatment
+```{r, warning=FALSE}
+# interaction
+FDis_1 <- glmmTMB(data = FD_all, FDis ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
 
-# does data fit model?
-simulateResiduals(FDis, plot=T) # looks ok
-shapiro.test(residuals(FDis)) # residuals are normal
+# no interaction
+FDis_2 <- glmmTMB(data = FD_all, FDis ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
 
+# climate
+FDis_3 <- glmmTMB(data = FD_all, FDis ~ climate + (1|Block), family = gaussian, na.action = na.fail)
 
-# # all pairwise comparisons
-# emmeans(FDis, pairwise ~ climate)
-# emmeans(FDis, pairwise ~ treatment)
-# emmeans(FDis, pairwise ~ climate | treatment)
+# treatment
+FDis_4 <- glmmTMB(data = FD_all, FDis ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
+
+# null
+FDis_5 <- glmmTMB(data = FD_all, FDis ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+AICc(FDis_1, FDis_2, FDis_3, FDis_4, FDis_5) #best model: FDis ~ climate * treatment
+
+simulateResiduals(FDis_1, plot = T) # looks good
+shapiro.test(residuals(FDis_1)) # normal
+
+# pairwise comparisons
+emmeans(FDis, pairwise ~ climate)
+emmeans(FDis, pairwise ~ treatment)
+emmeans(FDis, pairwise ~ climate * treatment)
 
 # estimated marginal means plot
-dat <- ggpredict(FDis, terms = c("treatment", "climate"))
+dat <- ggpredict(FDis_1, terms = c("treatment", "climate"))
 plot(dat, facet = TRUE)
 
 ```
@@ -432,7 +398,7 @@ plot(dat, facet = TRUE)
 dredge_FRic <- as.data.frame(dredge(FRic)) %>%
   filter(AICc == min(AICc)) %>% 
   mutate(CWM = "FRic") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment")
+  dplyr::select(CWM)
 
 dredge_FEve <- as.data.frame(dredge(FEve)) %>%
   filter(AICc == min(AICc)) %>% 
@@ -537,8 +503,10 @@ fd_aic_sup
 
 ```
 
-#### EMM Graphs
+
 ```{r, include=FALSE}
+#### EMM Graphs
+
 # color of arrows
 arrow_colors <- (rep(c("red", "orange", "blue"), 3))
 
@@ -665,17 +633,91 @@ FDis_plot <- emm_plot(FDis_emmeans) +
 
 ```
 
-#### ggeffects Graphs
 ```{r, include=FALSE}
-# ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
-# 
-# FRic_plot <- plot(ggpredict(FRic, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
-# # FEve_plot <- plot(ggpredict(FEve),  colors = ggeffects_colors, facet = TRUE)
-# FDiv_plot <- plot(ggpredict(FDiv, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
-# 
-# FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
-# 
-# ggsave("CFD_emmeans.png", plot = FD_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
+
+# ggeffects Graphs
+
+ggeffects_colors <- c("#f46d43", "#fee090", "#74add1")
+
+FDis_plot <- plot(ggpredict(FDis_5, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+
+ggpredict(FDis_5, terms = c("treatment", "climate"))
+
+# FEve_plot <- plot(ggpredict(FEve),  colors = ggeffects_colors, facet = TRUE)
+
+FDiv_plot <- plot(ggpredict(FDiv_5, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+
+FD_emmeans <- grid.arrange(FRic_plot, FDiv_plot)
+
+ggsave("CFD_emmeans.png", plot = FD_emmeans, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
+
+```
+
+```{r}
+
+graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 20) {
+  # model_name ex: LDMC_CWM
+  # model_terms as a list ex: c("treatment", "climate")
+  # model_formula ex: "pairwise ~ climate * treatment"
+  
+  predict <- ggpredict(model_name, terms = model_terms)
+  test <- as.data.frame(predict)
+  
+  # creating annotation data frame that will be used by geom_signif to get around the facet_wrap() problem
+  anno <- as.data.frame(summary(emmeans(model_name, specs = pairwise ~ climate * treatment))$contrasts) %>% 
+      filter(p.value <= 0.05) %>%
+    separate(col = contrast, into = c("plot_1", "plot_2"), sep = " - ") %>%
+    separate(col = plot_1, into = c("plot_1_climate", "plot_1_treatment"), sep = " ") %>%
+    separate(col = plot_2, into = c("plot_2_climate", "plot_2_treatment"), sep = " ") %>%
+    filter(plot_1_climate == plot_2_climate) %>%
+    rename(group = plot_1_climate, start = plot_1_treatment, end = plot_2_treatment) %>%
+    mutate(label = ifelse(p.value > .05, "*",
+                        ifelse(p.value <= 0.01, "**",
+                               ifelse(p.value <= 0.001, "***", "****")))) %>%
+    dplyr::select(group, start, end, label)
+
+  print(anno)
+  
+  ggplot(test, aes(x, predicted, color = group)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = .25, size = .75) +
+  scale_color_manual(values = ggeffects_colors) +
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20')
+  ) +
+    labs(title = plot_title, y = y_label, x = "Herbivore Treatment") +
+    geom_signif(
+      data = anno,
+      aes(xmin = start, xmax = end, annotations = label, y_position = y_positions),
+      color = "black",
+      manual = TRUE) +
+    facet_grid(~group)+
+    theme(legend.position = "none")
+}
+
+FDiv_plot <- graphs(model_name = FDiv_1,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Leaf Area CWM",
+       y_label = "Predicted Leaf Area CWM",
+       y_positions = 5)
+
+FDis_plot <- graphs(model_name = FDis_1,
+       model_terms = c("treatment", "climate"),
+       plot_title = "Leaf Area CWM",
+       y_label = "Predicted Leaf Area CWM",
+       y_positions = 5)
+
+FD_signif_all <- grid.arrange(FDiv_plot, FDis_plot)
 
 ```
 
