@@ -1,0 +1,88 @@
+---
+title: "Map"
+author: "Maggie Klope"
+date: "5/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mapdata)
+library(ggmap)
+
+plot_center <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/plot_center_gps_points.csv", col_names = FALSE) %>% 
+  dplyr::select(X1:X3) %>%
+  rename(lat = X1, long = X2, Climate = X3) %>% 
+  separate(col = Climate, into = c("Climate", "Block", "Treatment"), sep = "_") %>% 
+  mutate(Climate = ifelse(Climate == "A", "Arid", Climate)) %>% 
+  mutate(Climate = ifelse(Climate == "Int", "Intermediate", Climate)) %>% 
+  mutate(Climate = ifelse(Climate == "M", "Mesic", Climate))
+
+block_center <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/block_center_gps_points.csv", col_names = FALSE) %>% 
+  dplyr::select(X1:X3) %>%
+  rename(lat = X1, long = X2, Climate = X3)
+
+climate_center <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/climate_center_gps_points.csv", col_names = FALSE) %>% 
+  dplyr::select(X1:X3) %>%
+  rename(lat = X1, long = X2, Climate = X3)
+```
+
+
+```{r}
+
+california <- map_data("state") %>% 
+  filter(region == "california")
+california
+
+# bounding box
+tejon_box <- make_bbox(lon = plot_center$long, lat = plot_center$lat, f = .1)
+tejon_box_2 <- make_bbox(lon = plot_center$long, lat = plot_center$lat, f = .5)
+tejon_box_2
+
+#corner points of bounding box as dataframe
+outline_polygon <- data.frame(location = as.character(c("corner1", "corner2", "corner3", "corner4")))
+outline_polygon$lat = as.numeric(c(35.05413, 35.05413, 34.94313, 34.94313))
+outline_polygon$long = as.numeric(c(-118.72675, -118.53401, -118.53401, -118.72675))
+
+# california map w/ bounding box
+ca_map <- ggplot() +
+  geom_polygon(data = california, aes(x = long, y = lat, group = group), fill = "#dfc27d")+
+  geom_polygon(data = outline_polygon, aes(x = long, y = lat),  fill = "black")+
+  coord_fixed(1.3)+
+  theme_blank()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),axis.text.x=element_blank(),
+          axis.text.y=element_blank()
+        )
+
+ggsave("/Users/User_2/github/Tejon_Functional_Traits/Figures/ca_map.png")
+
+map <- get_map(location = tejon_box, source = "stamen")
+
+plot_map <- ggmap(map) +
+  geom_point(data = plot_center, aes(x = long, y = lat, fill = Climate, shape = Treatment), size = 5) +
+  scale_fill_manual(values = c("#f46d43", "#fee090", "#74add1"),
+                    name = "Climate",
+                    labels = c("Arid", "Intermediate", "Mesic")) +
+  scale_shape_manual(values = c(22, 21, 24))+
+  theme_blank()+
+  theme(panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      plot.background = element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),axis.text.x=element_blank(),
+      axis.text.y=element_blank()
+      )+
+  guides(fill=guide_legend(override.aes=list(shape=21)))
+
+plot_map 
+  
+ggsave("/Users/User_2/github/Tejon_Functional_Traits/Figures/plot_map.png")
+```
+
