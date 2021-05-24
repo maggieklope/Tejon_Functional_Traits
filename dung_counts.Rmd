@@ -11,23 +11,55 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 
-counts <- read_csv("~/Desktop/Devyn_dung_herbivore_data/JEcol_RawDungCounts.csv")
+counts <- read_csv("~/Desktop/Devyn_dung_herbivore_data/JEcol_RawDungCounts.csv") %>% 
+  rename(Climate = LEVEL)
 
 counts_2 <- counts %>% 
-  pivot_longer(cols = ALL_COW:ALL_PIG,
-               names_to = "herbivore",
-               values_to = "count")
-  # dplyr::select(YEAR, SEASON, LEVEL, BLOCK, TREATMENT, TRANSECT, herbivore, count)
-  # group_by(YEAR, LEVEL, TREATMENT, herbivore) %>% 
-  # summarise_all(mean) %>% 
-  # dplyr::select(YEAR, LEVEL, TREATMENT, count) %>% 
-  # group_by(YEAR, LEVEL, TREATMENT) %>% 
-  # summarise_all(.funs = sum)
+  dplyr::select(YEAR, SEASON, LEVEL, BLOCK, TREATMENT, TRANSECT, ALL_COW, ALL_WILD)
+  mutate(all_ungulate = ALL_COW + ALL_WILD)
 
-ggplot(data = counts_2, aes(x = TREATMENT, y = count, color = LEVEL)) +
+
+climate_cols <- c("#f46d43", "#fee090", "#74add1")
+
+ggplot(data = counts_2, aes(x = TREATMENT, y = all_ungulate, fill = Climate)) +
+  scale_fill_manual(values = climate_cols,
+                    labels = c("Arid", "Intermediate", "Mesic"))+
   geom_boxplot() +
-  theme_bw()
-  # facet_grid(~ YEAR, scales = "free")
+  theme_bw()+
+  ylab("Dung Counts")+
+  xlab("Herbivore Treatment")
+
+counts_3 <- counts %>% 
+  mutate(all_ungulate = ALL_COW + ALL_WILD) %>% 
+  dplyr::select(YEAR, SEASON, Climate, BLOCK, TREATMENT, all_ungulate) %>% 
+  group_by(SEASON, TREATMENT) %>% 
+  summarise_all(.funs = mean)
+
+ggplot(data = counts_3, aes(x = TREATMENT, y = all_ungulate)) +
+  geom_boxplot() +
+  theme_bw()+
+  ylab("Dung Counts")+
+  xlab("Herbivore Treatment")
+
+counts_4 <- counts %>% 
+   pivot_longer(cols = ALL_COW:ALL_WILD,
+                names_to = "Herbivore",
+   values_to = "count") %>% 
+  dplyr::select(YEAR, SEASON, Climate, BLOCK, TREATMENT, Herbivore, count)
+  # group_by(SEASON, TREATMENT) %>% 
+  # summarise_all(.funs = mean)
+
+ggplot(data = counts_4, aes(x = TREATMENT, y = count, fill = Herbivore)) +
+  scale_fill_manual(values = c("gray50", "gray80"),
+                    labels = c("Cow", "Wild Ungulate"))+
+  geom_boxplot() +
+  theme_bw()+
+  ylab("Dung Counts")+
+  xlab("Herbivore Treatment")+
+  theme(axis.title.x = element_text(margin = margin(t = 50, r = 0, b = 0, l = 0))) + 
+  scale_x_discrete(labels = c("Open", "Partial", "Total"))
+
+ggsave("/Users/User_2/github/Tejon_Functional_Traits/Figures/dung_counts.png", width = 6, height = 4)
 
 ```
 

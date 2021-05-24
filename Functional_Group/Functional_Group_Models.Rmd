@@ -29,59 +29,58 @@ library(ggeffects)
 
 other_traits <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
-cwm_traits_adj <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
-  left_join(other_traits, by = "species_name") %>% 
-  mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
-  mutate(weighted_sla = sla * Abundance) %>% 
-  mutate(weighted_ldmc = ldmc * Abundance) %>%
-  mutate(weighted_seed_mass = seed_mass * Abundance) %>%
-  mutate(weighted_n = leaf_n * Abundance) %>%
-  group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
-  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-  dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+# cwm_traits_adj <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+#   left_join(other_traits, by = "species_name") %>% 
+#   mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
+#   mutate(weighted_sla = sla * Abundance) %>% 
+#   mutate(weighted_ldmc = ldmc * Abundance) %>%
+#   mutate(weighted_seed_mass = seed_mass * Abundance) %>%
+#   mutate(weighted_n = leaf_n * Abundance) %>%
+#   group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
+#   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+#   dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
 # log transformation for seed mass & leaf n
-cwm_traits_adj <- cwm_traits_adj %>% 
-  mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
-  mutate(log_n = log(weighted_n))
+# cwm_traits_adj <- cwm_traits_adj %>% 
+#   mutate(log_seed_mass = log(weighted_seed_mass)) %>% 
+#   mutate(log_n = log(weighted_n))
 
 ```
 
 ```{r, include=FALSE}
-cwm_functional <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+functional_avg <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
   left_join(other_traits, by = "species_name") %>% 
-  mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
-  mutate(weighted_sla = sla * Abundance) %>% 
-  mutate(weighted_ldmc = ldmc * Abundance) %>%
-  mutate(weighted_seed_mass = seed_mass * Abundance) %>%
-  mutate(weighted_n = leaf_n * Abundance) %>%
-  group_by(climate, treatment, Block, functional_group) %>% #grouping by climate, treatment, and block
+  group_by(climate, Block, treatment, functional_group) %>%
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-  dplyr::select(climate, treatment, functional_group, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area, sla, ldmc, seed_mass, leaf_n)
 
-cwm_functional_2 <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+functional_data <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
   left_join(other_traits, by = "species_name") %>% 
-  dplyr::select(climate, treatment, Block, functional_group, Abundance) %>% 
-  dplyr::filter(Block == "A" | Block ==  "D" | Block ==  "G") %>% 
-  group_by(climate, functional_group) %>% 
-  summarise(Total_Abundance = sum(Abundance))
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area, sla, ldmc, seed_mass, leaf_n)
 
-ggplot(cwm_functional_2, aes(x = "", y = Total_Abundance, fill = functional_group)) +
-  geom_bar(stat="identity", width=1, color = "white") +
-  coord_polar("y", start = 0) +
-  facet_wrap(~climate) +
-  theme_void() +
-  labs(fill = "Functional Group:") +
-  scale_fill_manual(values = c("#c7eae5", "#b8e186", "#dfc27d")) +
-  theme(plot.background = element_rect(fill = "transparent", color = NA),
-        legend.background = element_rect(fill = "white", size = 0)) +
-  theme(legend.position="bottom")
+# cwm_functional_2 <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+#   left_join(other_traits, by = "species_name") %>% 
+#   dplyr::select(climate, treatment, Block, functional_group, Abundance) %>% 
+#   dplyr::filter(Block == "A" | Block ==  "D" | Block ==  "G") %>% 
+#   group_by(climate, functional_group) %>% 
+#   summarise(Total_Abundance = sum(Abundance))
+# 
+# ggplot(cwm_functional_2, aes(x = "", y = Total_Abundance, fill = functional_group)) +
+#   geom_bar(stat="identity", width=1, color = "white") +
+#   coord_polar("y", start = 0) +
+#   facet_wrap(~climate) +
+#   theme_void() +
+#   labs(fill = "Functional Group:") +
+#   scale_fill_manual(values = c("#c7eae5", "#b8e186", "#dfc27d")) +
+#   theme(plot.background = element_rect(fill = "transparent", color = NA),
+#         legend.background = element_rect(fill = "white", size = 0)) +
+#   theme(legend.position="bottom")
   
 # ggsave("plant_communit_piechart.png", path = "~/github/Tejon_Functional_Traits/Figures", width = 9, height = 7, bg = "transparent")
 
 #  barplot showing all climate/treatments
 cwm_functional %>%
-  pivot_longer(cols = weighted_la:weighted_n,
+  pivot_longer(cols = leaf_area:leaf_n,
                names_to = "traits",
                values_to = "value") %>%
   ggplot(aes(x = climate, y = value, color = treatment)) +
@@ -103,118 +102,283 @@ cwm_functional %>%
   
 ```
 
-#### CWMs with interaction between climate, treatment, and functional group
+#### Do trait averages within functional group vary by climate and herbivore treatment?
+
+- Do I do one model for each functional group's trait?
+Ex: grass leaf area ~ climate + treatment?
+
+- Or can I do one model per trait and look to see if interaction between functional group and/or climate is included?
+Ex: leaf area ~ climate + treatment + functional group + climate:functional group + climate:treatment?
+
+- Note: I don't have a large enough sample size to include block as a random effect with the single model approach
 
 ##### 1. leaf area
+
+###### a. one-model
 ```{r, warning=FALSE}
-funct_la <- glmmTMB(data = cwm_functional, weighted_la ~ climate * treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail) # AIC 620.6
-funct_la <- glmmTMB(data = cwm_functional, weighted_la ~ climate * functional_group + treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail) # AIC 633.1
+
+#### raw data ###
+la_data <- functional_data %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
+  drop_na() %>%
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area)) %>% 
+  mutate(sqrt_la_plus = sqrt(leaf_area + 1))
+
+# un-transformed data
+funct_la <- glmmTMB(data = la_data, leaf_area ~ climate * functional_group * treatment, family = gaussian, na.action = na.fail)
 dredge(funct_la)
+funct_la <- glmmTMB(data = la_data, leaf_area ~ functional_group + treatment, family = gaussian, na.action = na.fail)
 
-simulateResiduals(funct_la, plot= T) #does not pass dispersion test
-shapiro.test(residuals(funct_la)) #but residuals are normal
+simulateResiduals(funct_la, plot= T) # bad
 
-# testDispersion(simulateResiduals(funct_la, plot= T)) # does not pass
-
-#trying log transformation with gaussian
-cwm_functional <- cwm_functional %>%
-  mutate(log_la = log(weighted_la))
-
-funct_la <- glmmTMB(data = cwm_functional, log_la ~ climate *  functional_group + treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
+#trying log transformation
+funct_la <- glmmTMB(data = la_data, log_la ~ climate *  functional_group * treatment, family = gaussian, na.action = na.fail)
 dredge(funct_la)
-funct_la <- glmmTMB(data = cwm_functional, log_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment + (1|Block), family = gaussian, na.action = na.fail)
+funct_la <- glmmTMB(data = la_data, log_la ~ climate +  functional_group + treatment + climate:functional_group + treatment:functional_group, family = gaussian, na.action = na.fail)
 
-simulateResiduals(funct_la, plot= T) #looks good
-shapiro.test(residuals(funct_la)) # but residuals are not normal - is this ok?
+simulateResiduals(funct_la, plot= T) # bad
 
-# # trying Gamma with log link on un-transformed
-# funct_la <- glm(data = cwm_functional, weighted_la ~ climate * treatment * functional_group, family = Gamma(link = "log"), na.action = na.fail)
-# dredge(funct_la)
-# funct_la <- glm(data = cwm_functional, weighted_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment, family = Gamma(link = "log"), na.action = na.fail)
-# 
-# simulateResiduals(funct_la, plot= T) #does not pass dispersion test, but is very close!
-# shapiro.test(residuals(funct_la)) #but residuals are normal
+# square root transformation
+funct_la <- glmmTMB(data = la_data, sqrt_la ~ climate *  functional_group * treatment , family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glmmTMB(data = la_data, sqrt_la ~ treatment , family = gaussian, na.action = na.fail)
 
-# #trying log+1 with gaussian
-# cwm_functional <- cwm_functional %>% 
-#   mutate(log_plus_la = log(weighted_la + 1))
-# 
-# ggplot(cwm_functional, aes(x = log_plus_la)) +
-#   geom_histogram() +
-#   theme_bw()
-# 
-# funct_la <- glmmTMB(data = cwm_functional, log_plus_la ~ climate * treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
-# dredge(funct_la)
-# funct_la <- glmmTMB(data = cwm_functional, log_plus_la ~ climate + treatment + functional_group + climate:functional_group + functional_group:treatment + (1|Block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(funct_la, plot= T) #good? Two outliers
-# shapiro.test(residuals(funct_la)) #residuals are normal
+simulateResiduals(funct_la, plot= T) # bad
+shapiro.test(residuals(funct_la)) # not normal
 
-# pairwise comparisons
-emmeans(funct_la, pairwise ~ functional_group)
-emmeans(funct_la, pairwise ~ treatment | functional_group)
-emmeans(funct_la, pairwise ~ climate | functional_group)
+# square root +1 transformation
+funct_la <- glmmTMB(data = la_data, sqrt_la_plus ~ climate *  functional_group * treatment , family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glmmTMB(data = la_data, sqrt_la_plus ~ treatment , family = gaussian, na.action = na.fail)
 
-# # finding significant pairs
-# LA_funct_sig_pairs <- as.data.frame(pairs(emmeans(funct_la, ~ climate * treatment * functional_group))) %>%
-#   separate(contrast, c("A", "B"), sep = " - ") %>%
-#   separate(A, c("A_climate", "A_treatment", "A_functional_group"), sep = ",") %>%
-#   separate(B, c("B_climate", "B_treatment", "B_functional_group"), sep = ",") %>%
-#   filter((A_climate == B_climate & A_functional_group == B_functional_group) |
-#           (A_climate == B_climate & A_treatment == B_treatment) |
-#            (A_treatment == B_treatment & A_functional_group == B_functional_group))
-# LA_funct_sig_pairs
+simulateResiduals(funct_la, plot= T) # bad
+shapiro.test(residuals(funct_la)) # not normal
+
+### avg data ###
+funct_la <- glmmTMB(data = functional_avg, leaf_area ~ climate * functional_group * treatment, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glmmTMB(data = functional_avg, leaf_area ~ climate + functional_group + treatment + climate:functional_group + functional_group:treatment, family = gaussian, na.action = na.fail)
+simulateResiduals(funct_la, plot= T) # bad
+
+# log transformation
+functional_avg <- functional_avg %>% 
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area))
+
+funct_la <- glmmTMB(data = functional_avg, log_la ~ climate * functional_group * treatment, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glmmTMB(data = functional_avg, leaf_area ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
+simulateResiduals(funct_la, plot= T) # bad
+
+# square root transformation
+funct_la <- glmmTMB(data = functional_avg, sqrt_la ~ climate * functional_group * treatment, family = gaussian, na.action = na.fail)
+dredge(funct_la)
+funct_la <- glmmTMB(data = functional_avg, sqrt_la ~ climate + functional_group + treatment + climate:functional_group + climate:treatment + functional_group:treatment, family = gaussian, na.action = na.fail)
+simulateResiduals(funct_la, plot= T) # bad
+shapiro.test(residuals(funct_la )) # not normal
+```
+
+###### b. grass
+```{r, warning=FALSE}
+# using raw data
+grass_la_data <- functional_data %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area))
+
+grass_funct_la <- glmmTMB(data = grass_la_data, leaf_area ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_la)
+grass_funct_la <- glmmTMB(data = grass_la_data, leaf_area ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(grass_funct_la, plot= T) # not good
+
+# log transformation
+grass_funct_la <- glmmTMB(data = grass_la_data, log_la ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_la)
+grass_funct_la <- glmmTMB(data = grass_la_data, log_la ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+
+shapiro.test(residuals(grass_funct_la)) # not normal
+
+# square root transformation
+grass_funct_la <- glmmTMB(data = grass_la_data, sqrt_la ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_la)
+grass_funct_la <- glmmTMB(data = grass_la_data, sqrt_la ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_la, plot= T) # not good
+
+# using averaged data
+grass_la_avg <- functional_avg %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area))
+
+grass_funct_la <- glmmTMB(data = grass_la_avg, leaf_area ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_la )
+simulateResiduals(grass_funct_la, plot= T) # good
+shapiro.test(residuals(grass_funct_la))
+
+```
+###### c. shrub
+```{r, warning=FALSE}
+# using averaged data
+shrub_la_avg <- functional_avg %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area))
+
+shrub_funct_la <- glmmTMB(data = shrub_la_avg, leaf_area ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_la )
+shrub_funct_la <- glmmTMB(data = shrub_la_avg, leaf_area ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(shrub_funct_la, plot= T) # doesn't look that great
+shapiro.test(residuals(shrub_funct_la)) # but residuals are normal
+```
+######d. forb
+```{r, warning=FALSE}
+# using averaged data
+forb_la_avg <- functional_avg %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
+  mutate(log_la = log(leaf_area)) %>% 
+  mutate(sqrt_la = sqrt(leaf_area))
+
+forb_funct_la <- glmmTMB(data = forb_la_avg, leaf_area ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_la )
+forb_funct_la <- glmmTMB(data = forb_la_avg, leaf_area ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_la, plot= T) # doesn't look that great
+shapiro.test(residuals(forb_funct_la)) # not normal
+
+forb_funct_la <- glmmTMB(data = forb_la_avg, log_la ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_la )
+forb_funct_la <- glmmTMB(data = forb_la_avg, log_la ~  treatment + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_la, plot= T) # good
+shapiro.test(residuals(forb_funct_la)) # normal
 
 ```
 ##### 2. specific leaf area
 ```{r, warning=FALSE}
-#leaf area is very skewed:
-ggplot(cwm_functional, aes(x = weighted_sla)) +
-  geom_histogram() +
-  theme_bw()+
-  facet_wrap(~functional_group)
+sla_data <- functional_data %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  drop_na() %>% 
+  mutate(log_sla = log(sla))
 
-cwm_functional <- cwm_functional %>% 
-  mutate(log_sla = log(weighted_sla))
-
-funct_sla <- glmmTMB(data = cwm_functional, weighted_sla ~ climate * functional_group + treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
+funct_sla <- glmmTMB(data = sla_data, sla ~ climate * functional_group * treatment + (1|Block), family = gaussian, na.action = na.fail)
 dredge(funct_sla)
+funct_sla <- glmmTMB(data = sla_data, sla ~ treatment + functional_group + (1|Block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(funct_sla, plot= T) #does not pass
-shapiro.test(residuals(funct_sla)) # not normal
+simulateResiduals(funct_la, plot= T) # bad
 
-# trying log transformation with gaussian
-funct_sla <- glmmTMB(data = cwm_functional, log_sla ~ climate * functional_group + treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
+# log transformation
+funct_sla <- glmmTMB(data = sla_data, log_sla ~ climate * functional_group * treatment + (1|Block), family = gaussian, na.action = na.fail)
 dredge(funct_sla)
-funct_sla <- glmmTMB(data = cwm_functional, log_sla ~ climate + functional_group + treatment + climate:functional_group + (1|Block), family = gaussian, na.action = na.fail)
+funct_sla <- glmmTMB(data = sla_data, log_sla ~ functional_group + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(funct_la, plot= T) # bad
+
+# using average data
+funct_sla <- glmmTMB(data = functional_avg, sla ~ climate * treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
+# funct_sla <- glmmTMB(data = sla_data, sla ~ climate + treatment + functional_group + climate:functional_group + treatment + functional_group + (1|Block), family = gaussian, na.action = na.fail)
+
+dredge(funct_sla)
+funct_sla <- glmmTMB(data = functional_avg, sla ~ climate + functional_group + treatment + climate:functional_group + climate:treatment + (1|Block), family = gaussian, na.action = na.fail)
 
 simulateResiduals(funct_sla, plot= T) # good
-shapiro.test(residuals(funct_sla)) # not normal, but does that matter??
+shapiro.test(residuals(funct_sla)) # normal
+```
+###### b. grass
+```{r, warning=FALSE}
+# using raw data
+grass_sla_data <- functional_data %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
 
-# # trying Gamma with log link on un-transformed
-# funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate * treatment * functional_group, family = Gamma, na.action = na.fail)
-# dredge(funct_sla)
-# funct_sla <- glm(data = cwm_functional, weighted_sla ~ climate + functional_group + treatment + climate:functional_group, family = Gamma, na.action = na.fail)
-# 
-# simulateResiduals(funct_sla, plot= T) # not normal
-# shapiro.test(residuals(funct_sla)) # not normal
-# 
-# #trying log+1 with gaussian
-# cwm_functional <- cwm_functional %>% 
-#   mutate(log_plus_sla = log(weighted_sla + 1))
-# 
-# funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate * treatment * functional_group, family = gaussian, na.action = na.fail)
-# dredge(funct_sla)
-# funct_sla <- glm(data = cwm_functional, log_plus_sla ~ climate + functional_group + treatment + climate:functional_group, family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(funct_sla, plot= T) #good
-# shapiro.test(residuals(funct_sla)) #normal
+grass_funct_sla <- glmmTMB(data = grass_sla_data, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_sla)
 
-# pairwise comparisons
-emmeans(funct_sla, pairwise ~ functional_group)
-emmeans(funct_sla, pairwise ~ treatment | functional_group)
-emmeans(funct_sla, pairwise ~ climate | functional_group)
+simulateResiduals(grass_funct_sla, plot= T) # ok?
+shapiro.test(residuals(grass_funct_sla)) # not normal
 
+# using averaged data
+grass_sla_avg <- functional_avg %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
+
+grass_funct_sla <- glmmTMB(data = grass_sla_avg, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_sla )
+simulateResiduals(grass_funct_sla, plot= T) # good
+shapiro.test(residuals(grass_funct_sla))
+```
+
+###### c. shrub
+```{r, warning=FALSE}
+# using raw data
+shrub_sla_data <- functional_data %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
+
+shrub_funct_sla <- glmmTMB(data = shrub_sla_data, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_sla)
+shrub_funct_sla <- glmmTMB(data = shrub_sla_data, sla ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_funct_sla, plot= T) # ok?
+shapiro.test(residuals(shrub_funct_sla)) # not normal
+
+# using averaged data
+shrub_sla_avg <- functional_avg %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
+
+shrub_funct_sla <- glmmTMB(data = shrub_sla_avg, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_sla )
+simulateResiduals(shrub_funct_sla, plot= T) # not good
+
+shrub_funct_sla <- glmmTMB(data = shrub_sla_avg, log_sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_sla)
+simulateResiduals(shrub_funct_sla, plot= T) # not good
+
+```
+###### c. forb
+```{r, warning=FALSE}
+# using raw data
+forb_sla_data <- functional_data %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  drop_na() %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
+
+forb_funct_sla <- glmmTMB(data = forb_sla_data, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_sla)
+forb_funct_sla <- glmmTMB(data = forb_sla_data, sla ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_sla, plot= T) # not good
+
+# log transformed
+forb_funct_sla <- glmmTMB(data = forb_sla_data, log_sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_sla)
+forb_funct_sla <- glmmTMB(data = forb_sla_data, log_sla ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_sla, plot= T) # good
+
+# using averaged data
+forb_sla_avg <- functional_avg %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, sla) %>% 
+  mutate(log_sla = log(sla)) %>% 
+  mutate(sqrt_sla = sqrt(sla))
+
+forb_funct_sla <- glmmTMB(data = forb_sla_avg, sla ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_sla )
+simulateResiduals(forb_funct_sla, plot= T) # good
+shapiro.test(residuals(forb_funct_sla)) # not normal
 ```
 ##### 3. ldmc
 ```{r, warning=FALSE}
@@ -241,6 +405,59 @@ emmeans(funct_ldmc, pairwise ~ treatment | functional_group)
 emmeans(funct_ldmc, pairwise ~ climate | functional_group)
 
 ```
+###### b. grass
+```{r}
+# using raw data
+grass_ldmc_data <- functional_data %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, ldmc) %>% 
+  mutate(log_ldmc = log(ldmc)) %>% 
+  mutate(sqrt_ldmc = sqrt(ldmc))
+
+grass_funct_ldmc <- glmmTMB(data = grass_ldmc_data, ldmc ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_ldmc)
+grass_funct_ldmc <- glmmTMB(data = grass_ldmc_data, ldmc ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_ldmc, plot= T) # not ok
+
+# log transformation
+grass_funct_ldmc <- glmmTMB(data = grass_ldmc_data, log_ldmc ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_ldmc)
+simulateResiduals(grass_funct_ldmc, plot= T) # groups do not have equal variance
+
+```
+###### c. shrub
+```{r, warning=FALSE}
+# using raw data
+shrub_ldmc_data <- functional_data %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, ldmc) %>% 
+  mutate(log_ldmc = log(ldmc)) %>% 
+  mutate(sqrt_ldmc = sqrt(ldmc))
+
+shrub_funct_ldmc <- glmmTMB(data = shrub_ldmc_data, ldmc ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_ldmc)
+shrub_funct_ldmc <- glmmTMB(data = shrub_ldmc_data, ldmc ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_funct_ldmc, plot= T) # ok?
+shapiro.test(residuals(shrub_funct_ldmc)) # normal
+
+```
+###### c. forb
+```{r, warning=FALSE}
+# using raw data
+forb_ldmc_data <- functional_data %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, ldmc) %>% 
+  drop_na() %>% 
+  mutate(log_ldmc = log(ldmc)) %>% 
+  mutate(sqrt_ldmc = sqrt(ldmc))
+
+forb_funct_ldmc <- glmmTMB(data = forb_ldmc_data, ldmc ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_ldmc)
+forb_funct_ldmc <- glmmTMB(data = forb_ldmc_data, ldmc ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_ldmc, plot= T) # good
+```
+
 ##### 4. lnc
 ```{r, warning=FALSE}
 funct_n <- glmmTMB(data = cwm_functional, weighted_n ~ climate * functional_group + treatment * functional_group + (1|Block), family = gaussian, na.action = na.fail)
@@ -275,6 +492,65 @@ emmeans(funct_n, pairwise ~ treatment | functional_group)
 emmeans(funct_n, pairwise ~ climate | functional_group)
 
 ```
+###### b. grass
+```{r}
+# using raw data
+grass_leaf_n_data <- functional_data %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_n) %>% 
+  mutate(log_leaf_n = log(leaf_n)) %>% 
+  mutate(sqrt_leaf_n = sqrt(leaf_n))
+
+grass_funct_leaf_n <- glmmTMB(data = grass_leaf_n_data, leaf_n ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_leaf_n)
+grass_funct_leaf_n <- glmmTMB(data = grass_leaf_n_data, leaf_n ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_leaf_n, plot= T) # good
+```
+###### c. shrub
+```{r, warning=FALSE}
+# using raw data
+shrub_leaf_n_data <- functional_data %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_n) %>% 
+  mutate(log_leaf_n = log(leaf_n)) %>% 
+  mutate(sqrt_leaf_n = sqrt(leaf_n))
+
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, leaf_n ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_leaf_n)
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, leaf_n ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(shrub_funct_leaf_n, plot= T) # not good
+
+# log transformation
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, log_leaf_n ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_leaf_n)
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, log_leaf_n ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(shrub_funct_leaf_n, plot= T) # not good
+
+# square root transformation
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, sqrt_leaf_n ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_leaf_n)
+shrub_funct_leaf_n <- glmmTMB(data = shrub_leaf_n_data, leaf_n ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_funct_leaf_n, plot= T) # not good
+shapiro.test(residuals(shrub_funct_leaf_n)) # normal
+
+```
+###### c. forb
+```{r, warning=FALSE}
+# using raw data
+forb_leaf_n_data <- functional_data %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, leaf_n) %>% 
+  drop_na() %>% 
+  mutate(log_leaf_n = log(leaf_n)) %>% 
+  mutate(sqrt_leaf_n = sqrt(leaf_n))
+
+forb_funct_leaf_n <- glmmTMB(data = forb_leaf_n_data, leaf_n ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_leaf_n)
+forb_funct_leaf_n <- glmmTMB(data = forb_leaf_n_data, leaf_n ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_leaf_n, plot= T) # good
+```
+
 ##### 5. seed mass
 ```{r, warning=FALSE}
 # untransformed with gaussian
@@ -317,154 +593,99 @@ emmeans(funct_seed_mass, pairwise ~ functional_group)
 emmeans(funct_seed_mass, pairwise ~ climate | functional_group)
 
 ```
+###### b. grass
+```{r}
+# using raw data
+grass_seed_mass_data <- functional_data %>% 
+  filter(functional_group == "grass") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, seed_mass) %>% 
+  mutate(log_seed_mass = log(seed_mass)) %>% 
+  mutate(sqrt_seed_mass = sqrt(seed_mass))
 
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_seed_mass)
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_seed_mass, plot= T) # not ok
 
-```{r, include = FALSE}
+# log transformation
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, log_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_seed_mass)
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, log_seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_seed_mass, plot= T) # groups do not have equal variance
 
-#### Best-Fit Model Table
-# dredge_funct_la <- as.data.frame(dredge(funct_la)) %>%
-#   filter(AICc == min(AICc)) %>%
-#   mutate(CWM = "log(Leaf Area + 1)") %>%
-#   dplyr::select(!c(df, logLik, AICc, delta, weight, "cond((Int))", "disp((Int))"))
-#   
-# dredge_funct_sla <-  as.data.frame(dredge(funct_sla)) %>%
-#   filter(AICc == min(AICc)) %>%
-#   mutate(CWM = "Specific Leaf Area (log(x+1)") %>%
-#   dplyr::select(!c(df, logLik, AICc, delta, weight, "cond((Int))", "disp((Int))"))
-# 
-# 
-# dredge_funct_ldmc <- as.data.frame(dredge(funct_ldmc)) %>%
-#   filter(AICc == min(AICc)) %>%
-#   mutate(CWM = "Leaf Dry Matter Content (log)") %>%
-#   dplyr::select(!c(df, logLik, AICc, delta, weight, "cond((Int))", "disp((Int))"))
-# 
-# dredge_funct_seed_mass <- as.data.frame(dredge(funct_seed_mass)) %>%
-#   filter(AICc == min(AICc)) %>%
-#   mutate(CWM = "Seed Mass (log)") %>%
-#   dplyr::select(!c(df, logLik, AICc, delta, weight, "cond((Int))", "disp((Int))"))
-# 
-# dredge_funct_n <- as.data.frame(dredge(funct_n)) %>%
-#   filter(AICc == min(AICc)) %>%
-#   mutate(CWM = "Leaf Nitrogen Content (log(x+1)") %>%
-#   dplyr::select(!c(df, logLik, AICc, delta, weight, "cond((Int))", "disp((Int))"))
-# 
-# dredge_table <- dredge_funct_la %>%
-#   full_join(dredge_funct_sla) %>%
-#   full_join(dredge_funct_ldmc) %>%
-#   full_join(dredge_funct_seed_mass) %>%
-#   full_join(dredge_funct_n) %>%
-#   mutate(Climate = str_replace(`cond(climate)`, "\\+","x")) %>%
-#   mutate(`Functional Group` = str_replace(`cond(functional_group)`, "\\+","x")) %>% 
-#   mutate(Treatment = str_replace(`cond(treatment)`, "\\+","x")) %>%
-#   mutate(`Climate:Functional Group` = str_replace(`cond(climate:functional_group)`, "\\+","x")) %>%
-#   mutate(`Functional Group:Treatment` = str_replace(`cond(functional_group:treatment)`, "\\+","x")) %>%
-#   mutate(`Climate:Functional Group` = str_replace(`cond(climate:functional_group)`, "\\+","x")) %>% 
-#   dplyr::select(CWM, Climate, "Functional Group", Treatment, "Climate:Functional Group", "Functional Group:Treatment", "Climate:Functional Group")
-# 
-# dredge_table
-# 
-# knitr::kable(dredge_table)
+# sqrt transformation
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, sqrt_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(grass_funct_seed_mass)
+grass_funct_seed_mass <- glmmTMB(data = grass_seed_mass_data, sqrt_seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(grass_funct_seed_mass, plot= T) # groups do not have equal variance; residuals not normal
 
-# Trying gt package
-# data must be a tibble
+```
+###### c. shrub
+```{r, warning=FALSE}
+# using raw data
+shrub_seed_mass_data <- functional_data %>% 
+  filter(functional_group == "shrub") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, seed_mass) %>% 
+  mutate(log_seed_mass = log(seed_mass)) %>% 
+  mutate(sqrt_seed_mass = sqrt(seed_mass))
 
-# pretty_table <- dredge_table %>%
-#   as_tibble() %>%
-#   gt() %>%
-#   tab_header(
-#     title = "Functional Group CWM Best-Fit Models"
-#   ) %>%
-#   tab_spanner(
-#     label = "Fixed Effects Terms",
-#     columns = vars(climate, functional_group, treatment, "climate:functional_group", "climate:treatment", "functional_group:treatment", "climate:functional_group")
-#   ) %>%
-#   fmt_missing(
-#     columns = vars(climate, functional_group, treatment, "climate:functional_group", "climate:treatment", "functional_group:treatment", "climate:functional_group"),
-#     missing_text = " "
-#   ) %>%
-#   tab_source_note(
-#     source_note = "x indicates selection of fixed effect term for best-fit model"
-#   )
-# 
-# pretty_table
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_seed_mass)
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, seed_mass ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
 
-# gtsave(data = pretty_table, filename = "Funct_Group_best_fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+simulateResiduals(shrub_funct_seed_mass, plot= T) # not good
+
+# log transformation
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, log_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_seed_mass)
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, log_seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_funct_seed_mass, plot= T) # not good
+
+# square root transformation
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, sqrt_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(shrub_funct_seed_mass)
+shrub_funct_seed_mass <- glmmTMB(data = shrub_seed_mass_data, sqrt_seed_mass ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+
+simulateResiduals(shrub_funct_seed_mass, plot= T) # not good
+
+```
+###### c. forb
+```{r, warning=FALSE}
+# using raw data
+forb_seed_mass_data <- functional_data %>% 
+  filter(functional_group == "forb") %>% 
+  dplyr::select(Block, climate, treatment, functional_group, seed_mass) %>% 
+  drop_na() %>% 
+  mutate(log_seed_mass = log(seed_mass)) %>% 
+  mutate(sqrt_seed_mass = sqrt(seed_mass))
+
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_seed_mass)
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_seed_mass, plot= T) # bad
+
+# log transformation
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, log_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_seed_mass)
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, log_seed_mass ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_seed_mass, plot= T) # bad
+
+# square root transformation
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, sqrt_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(forb_funct_seed_mass)
+forb_funct_seed_mass <- glmmTMB(data = forb_seed_mass_data, sqrt_seed_mass ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
+simulateResiduals(forb_funct_seed_mass, plot= T) # bad
 ```
 
+### Contribution of functinoal group turnover to variance
+```{r}
+functional_avg <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+  left_join(other_traits, by = "species_name") %>% 
+  group_by(climate, Block, treatment, functional_group) %>%
+  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+  dplyr::select(Block, climate, treatment, functional_group, leaf_area, sla, ldmc, seed_mass, leaf_n)
 
-```{r, include=FALSE}
 
-#### AIC Supplement
-# dredge_funct_la <- as.data.frame(dredge(funct_la)) %>%
-#   mutate(CWM = "Leaf Area (log(x+1))") %>%
-#   dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", "climate:functional_group", AICc)
-# 
-# dredge_funct_sla <-  as.data.frame(dredge(funct_sla)) %>%
-#   mutate(CWM = "Specific Leaf Area (log(x+1)") %>%
-#   dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
-# 
-# dredge_funct_ldmc <- as.data.frame(dredge(funct_ldmc)) %>%
-#   mutate(CWM = "Leaf Dry Matter Content (log)") %>%
-#   dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", "functional_group:treatment", AICc)
-# 
-# dredge_funct_seed_mass <- as.data.frame(dredge(funct_seed_mass)) %>%
-#   mutate(CWM = "Seed Mass (log)") %>%
-#   dplyr::select(CWM, climate, functional_group, "climate:functional_group", AICc)
-# 
-# dredge_funct_n <- as.data.frame(dredge(funct_n)) %>%
-#   mutate(CWM = "Leaf Nitrogen Content (log(x+1)") %>%
-#   dplyr::select(CWM, climate, functional_group, treatment, "climate:functional_group", AICc)
-# 
-# dredge_table <- dredge_funct_la %>%
-#   full_join(dredge_funct_sla) %>%
-#   full_join(dredge_funct_ldmc) %>%
-#   full_join(dredge_funct_seed_mass) %>%
-#   full_join(dredge_funct_n) %>%
-#   mutate(climate = str_replace(climate, "\\+","x")) %>%
-#   mutate(functional_group = str_replace(functional_group, "\\+","x")) %>%
-#   mutate(treatment = str_replace(treatment, "\\+","x")) %>%
-#   mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x")) %>%
-#   mutate(`climate:treatment` = NA) %>%
-#   mutate(`functional_group:treatment` = str_replace(`functional_group:treatment`, "\\+","x")) %>%
-#   mutate(`climate:functional_group` = str_replace(`climate:functional_group`, "\\+","x"))
-# 
-# # Trying gt package
-# # data must be a tibble
-# 
-# funct_cwm_aic_sup <- dredge_table %>%
-#   as_tibble() %>%
-#   dplyr::group_by(CWM) %>%
-#   gt() %>%
-#   tab_header(
-#     title = "Functional Group CWM Best-Fit Models"
-#   ) %>%
-#   tab_spanner(
-#     label = "Fixed Effects Terms",
-#     columns = vars(climate, functional_group, treatment, "climate:functional_group","climate:treatment", "functional_group:treatment", "climate:functional_group")
-#   ) %>%
-#   fmt_missing(
-#     columns = vars(climate, functional_group, treatment, "climate:functional_group","climate:treatment", "functional_group:treatment", "climate:functional_group"),
-#     missing_text = " "
-#   ) %>%
-#   tab_source_note(
-#     source_note = "x indicates selection of fixed effect term for best-fit model"
-#   ) %>%
-#   cols_align(align = "center") %>%
-#   tab_style(
-#       style = cell_borders(
-#         sides = c("left", "right"),
-#         color = "#BBBBBB",
-#         weight = px(1.5),
-#         style = "solid"
-#       ),
-#       locations = cells_body(
-#         columns = everything(),
-#         rows = everything()
-#       )
-#     )
-# 
-# # funct_cwm_aic_sup
-# 
-# # gtsave(data = funct_cwm_aic_sup, filename = "Funct_Group_AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
 ```
 
