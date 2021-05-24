@@ -8,8 +8,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # loading packages
-packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt")
+packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt", "effectsize")
 (lapply(packages, library, character.only = TRUE))
+
 
 # loading trait data
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
@@ -69,7 +70,6 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
 #### a) LA CWM
 
 ```{r}
-
 # # climate model:
 # LA_CWM_1 <- lm(data = cwm_traits_adj, weighted_la ~ climate)
 # 
@@ -127,6 +127,9 @@ la_comparisons <- as.data.frame(TukeyHSD(n_aov)$'climate:treatment') %>%
   rename(p_value = 'p adj') %>% 
   dplyr::filter(p_value <= 0.05)
 
+# effect size? not sure which method is the best
+# eta_squared(n_aov)
+
 # pairwise comparison plots
 plot(emmeans(n_aov, ~ climate + treatment)) 
 emmeans(LA_CWM_3, pairwise ~ climate * treatment)
@@ -183,6 +186,9 @@ plot(emmeans(SLA_CWM_1, ~ climate * treatment))
 ```{r}
 # interaction model
 LDMC_CWM_1 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment)
+simulateResiduals(LDMC_CWM_1, plot= T) #looks good
+shapiro.test(residuals(LDMC_CWM_1)) #normal
+anova(LDMC_CWM_1)
 
 # no interaction model
 LDMC_CWM_2 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment)
@@ -246,6 +252,9 @@ plot(emmeans(LDMC_CWM_2, ~ climate + treatment))
 
 # interaction model
 seed_mass_CWM_1 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment)
+simulateResiduals(seed_mass_CWM_1, plot= T) #looks good
+shapiro.test(residuals(seed_mass_CWM_1)) #normal
+anova(seed_mass_CWM_1)
 
 # no interaction model
 seed_mass_CWM_2 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment)
@@ -288,7 +297,9 @@ plot(emmeans(seed_mass_CWM_2, ~ climate + treatment))
 
 # interaction model
 n_CWM_1 <- lm(data = cwm_traits_adj, weighted_n ~ climate * treatment)
-# n_CWM_1 <- glm(data = cwm_traits_adj, weighted_n ~ climate * treatment, family = gaussian, na.action = na.fail)
+shapiro.test(residuals(n_CWM_1)) 
+qqPlot(residuals(n_CWM_1))
+anova(n_CWM_1)
 
 # no interaction model
 n_CWM_2 <- lm(data = cwm_traits_adj, weighted_n ~ climate + treatment)
@@ -475,6 +486,56 @@ modelsummary::modelsummary(models,
                            title = "Community-weighted Means Models",
                            coef_rename = names,
                            stars = TRUE) # won't let me change name of interaction coefficients
+
+```
+
+# trying out Effects package plots
+```{r}
+library(effects)
+
+treatment_cols <- c("#c7eae5", "#b8e186", "#dfc27d")
+climate_cols <- c("#f46d43", "#fee090", "#74add1")
+
+# leaf area
+Anova(LA_CWM_3)
+plot(predictorEffect("climate", LA_CWM_3), lines=list(multiline=TRUE, col = treatment_cols), confint=list(style="auto")) 
+plot(predictorEffect("treatment", LA_CWM_3), lines=list(multiline=TRUE, col = climate_cols), confint=list(style="auto")) 
+plot(predictorEffects(LA_CWM_3, ~ climate * treatment))
+plot(predictorEffects(LA_CWM_3, ~ climate * treatment),  lines=list(multiline=TRUE, col = climate_cols), confint=list(style="auto"))
+
+# SLA
+Anova(SLA_CWM_1)
+plot(predictorEffect("climate", SLA_CWM_1)) 
+plot(predictorEffect("treatment", SLA_CWM_1))
+# plot(predictorEffects(SLA_CWM_1, ~ climate * treatment))
+plot(predictorEffects(SLA_CWM_1, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
+
+# LDMC
+Anova(LDMC_CWM_2)
+plot(predictorEffect("climate", LDMC_CWM_2)) 
+plot(predictorEffect("treatment", LDMC_CWM_2))
+# plot(predictorEffects(LDMC_CWM_2, ~ climate * treatment))
+plot(predictorEffects(LDMC_CWM_2, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
+
+plot(predictorEffect("climate", LDMC_CWM_1)) 
+plot(predictorEffect("treatment", LDMC_CWM_1))
+plot(predictorEffects(LDMC_CWM_1, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
+
+# Seed Mass
+Anova(seed_mass_CWM_2)
+plot(predictorEffect("climate", seed_mass_CWM_2)) 
+plot(predictorEffect("treatment", seed_mass_CWM_2))
+# plot(predictorEffects(seed_mass_CWM_2, ~ climate * treatment))
+plot(predictorEffects(seed_mass_CWM_2, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
+plot(predictorEffect("climate", seed_mass_CWM_1)) 
+plot(predictorEffect("treatment", seed_mass_CWM_1))
+plot(predictorEffects(seed_mass_CWM_1, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
+
+# Leaf N
+plot(predictorEffect("climate", n_CWM_2)) 
+plot(predictorEffect("treatment", n_CWM_2))
+# plot(predictorEffects(n_CWM_2, ~ climate * treatment))
+plot(predictorEffects(n_CWM_2, ~ climate * treatment),  lines=list(multiline=TRUE), confint=list(style="auto"))
 
 ```
 
