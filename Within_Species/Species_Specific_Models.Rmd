@@ -24,10 +24,10 @@ library(emmeans) #post-hoc analyses
 # library(performance) #for R2 values
 
 # Loading 2019 abundance data calculated from transect surveys
-abund_2019 <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/2019_abundance_sci_names.csv") %>% 
-  rename(species_name = Species) %>% # changing column names
-  rename(climate = Climate) %>% # changing column names
-  rename(treatment = Plot)# changing column names
+abund_2019 <-  read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/2019_abundance_new.csv")
+  # rename(species_name = Species) %>% # changing column names
+  # rename(climate = Climate) %>% # changing column names
+  # rename(treatment = Plot)# changing column names
 
 abund_2019$climate[abund_2019$climate == "Int"] <- "Intermediate" # changing name of int climate
 
@@ -261,13 +261,19 @@ traits_2019 <- full_join_2019 %>%
   mutate(ldmc = dry_weight_mg / as.numeric(wet_weight_g))
 
 traits <- traits_2019 %>% 
-  filter(dry_weight_g < wet_weight_g) %>%  # removing incorrect weights
-  filter(sla < 65) %>% # there is one big outlier, but I don't think the dry weight is correct and need to re-weight
+  filter(dry_weight_g < wet_weight_g) %>%  # removing incorrect weights %>% 
+  # filter(!(species == "Triteleia ixioides" | species == "Trifolium microcephalum" | species == "Symphoricarpos mollis" | species == "Ericameria nauseosa")) %>% 
+  # filter(sla < 65) %>% # there is one big outlier, but I don't think the dry weight is correct and need to re-weight
   mutate(log_ldmc = log(ldmc)) %>% 
   mutate(log_la = log(indiv_area)) %>% 
   mutate(log_sla = log(sla)) %>% 
   unite(c("climate", "new_block", "treatment"), col = "plot", sep = "-", remove = FALSE) %>% 
   drop_na()
+
+# traits_19_avg <- traits %>% 
+#   group_by(climate, treatment, new_block, species) %>% 
+#   summarise_all(mean, na.rm = TRUE)
+# write_csv(traits_19_avg, "/Users/User_2/github/Tejon_Functional_Traits/Datasheets/traits_19_avg.csv")
 
 ```
 
@@ -280,142 +286,32 @@ Ideal models: `glmm(trait ~ Climate * Species + Treatment * Species + (1|Block/p
 - the presence of an interaction between treatment and species or climate and species is what I am interested in detecting
 - one model for each trait
 
-#### SLA
+#### Testing with SLA: not enough data
 
 ```{r}
+# NOT ENOUGH DATA
 # SLA ~ treatment * species + climate * species + (1|new_block/plot)
-# model_sla <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block/plot), family = gaussian, na.action = na.fail)
-# this is the same model as above because I have a unique name for each block and plot
 model_sla_1 <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla_1) # best fit is climate and species; AICc = 1155.0
-model_sla_1 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_sla_1, plot= T) # does not pass outlier test
+model_sla_1a <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|new_block), family = gaussian, na.action = na.fail)
+model_sla_1b <- glmmTMB(data = traits, sla ~ treatment * species + climate * species, family = gaussian, na.action = na.fail)
+model_sla_1c <- glmmTMB(data = traits, sla ~ treatment * species + climate * species + (1|plot), family = gaussian, na.action = na.fail)
+model_sla_1d <- glmmTMB(data = traits, sla ~ treatment * species * climate, family = gaussian, na.action = na.fail)
+model_sla_1e <- glmmTMB(data = traits, sla ~ treatment:species + climate:species, family = gaussian, na.action = na.fail)
 
 # SLA ~ treatment * species + (1|new_block/plot)
 model_sla_2 <- glmmTMB(data = traits, sla ~ treatment * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla_2) # best fit is climate only; AICc = 1159.2
-model_sla_2 <- glmmTMB(data = traits, sla ~ treatment + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_sla_2, plot= T) # looks good
 
 # SLA ~ climate * species + (1|new_block/plot)
 model_sla_3 <- glmmTMB(data = traits, sla ~ climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla_3) # best fit is climate + species; AICc = 1155.0
-model_sla_3 <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_sla_3, plot= T) # does not pass outlier test
+model_sla_3a <- glmmTMB(data = traits, sla ~ climate:species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
 
 # SLA ~ 1 + (1|new_block/plot)
 model_sla_4 <- glmmTMB(data = traits, sla ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_sla_4) # AICc = 1381
-simulateResiduals(model_sla_4, plot= T) # looks good
 
 # #log(SLA)
-# model_sla <- glmmTMB(data = traits, log_sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-# dredge(model_sla) # best fit is climate and species; AIC = 1.7 <- so low - is that even possible?
-# model_sla <- glmmTMB(data = traits, log_sla ~ treatment + species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-# simulateResiduals(model_sla, plot= T) # still doesn't pass outlier test :(
+model_sla_5 <- glmmTMB(data = traits, log_sla ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
 
-```
-
-```{r, warning = FALSE}
-
-
-# LA
-model_la <- glmmTMB(data = traits, indiv_area ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_la) # best fit is intercept (AIC = 2823.5) followed by climate (AIC = 2824.5)
-model_la <- glmmTMB(data = traits, indiv_area ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_la, plot= T) # doesn't pass outlier test
-
-# log(LA)
-model_la <- glmmTMB(data = traits, log_la ~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_la) # best fit is species + treatment (AIC = 247.5) followed by climate + species + treatment (AIC = 248.7)
-model_la <- glmmTMB(data = traits, log_la ~ species + treatment + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_la, plot= T) # looks good?
-
-# LDMC
-model_ldmc <- glmmTMB(data = traits, ldmc~ treatment * species + climate * species + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-dredge(model_ldmc) # best fit intercept only (AIC = 2165.1)
-model_la <- glmmTMB(data = traits, ldmc ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-simulateResiduals(model_la, plot= T) # looks good
-
-```
-
-```{r, include=FALSE}
-# 
-# # log transformation
-# model_1 <- glmmTMB(data = traits,log_sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# dredge(model_1) # best fit model has climate and species
-# model_1 <- glmmTMB(data = traits, log_sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # log+1 transformation
-# model_1 <- glmmTMB(data = traits, log_sla_plus ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# dredge(model_1) # best fit model has climate and species
-# model_1 <- glmmTMB(data = traits, log_sla_plus ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(model_1, plot= T)  # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # square root transformation
-# model_1 <- glmmTMB(data = traits, sqrt_sla ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# dredge(model_1) # best fit model has climate and species
-# model_1 <- glmmTMB(data = traits, sqrt_sla ~ climate + species + (1|new_block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # squared transformation
-# model_1 <- glmmTMB(data = traits, sla2 ~ treatment * climate + species + (1|new_block), family = gaussian, na.action = na.fail) 
-# dredge(model_1)
-# 
-# model_1 <- glm(data = traits, sla ~ treatment * climate + species, family = gaussian, na.action = na.fail)
-# dredge(model_1) # best fit includes climate and species
-# model_1 <- glm(data = traits, sla ~ climate + species, family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(model_1, plot= T) # so bad
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# 
-# # un-transformed, Gamma
-# model_1  <- glmmTMB(data = traits, sla ~ treatment * climate + species + (1|new_block), family = Gamma(link = "log"))
-# dredge(model_1)
-# model_1  <- glmmTMB(data = traits, sla ~ climate + species + (1|new_block), family = Gamma(link = "log"))
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # log transformed, Gamma
-# model_1  <- glmmTMB(data = traits, log_sla ~ treatment * climate + species + (1|new_block), family = Gamma(link = "log"))
-# dredge(model_1)
-# model_1  <- glmmTMB(data = traits, log_sla ~ climate + species + (1|new_block), family = Gamma(link = "log"))
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # log+1 transformed, Gamma
-# model_1  <- glmmTMB(data = traits, log_sla_plus ~ treatment * climate + species + (1|new_block), family = Gamma(link = "log"))
-# dredge(model_1)
-# model_1  <- glmmTMB(data = traits, log_sla_plus ~ climate + species + (1|new_block), family = Gamma(link = "log"))
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # sqrt transformed, Gamma
-# model_1  <- glmmTMB(data = traits, sqrt_sla ~ treatment * climate + species + (1|new_block), family = Gamma(link = "log"))
-# dredge(model_1)
-# model_1  <- glmmTMB(data = traits, sqrt_sla ~ climate + species + (1|new_block), family = Gamma(link = "log"))
-# 
-# simulateResiduals(model_1, plot= T) # doesn't pass KS test
-# shapiro.test(residuals(model_1)) # not normal
-# 
-# # power transformed, Gamma
-# model_1  <- glmmTMB(data = traits, sla2 ~ treatment * climate + species + (1|new_block), family = Gamma(link = "log"))
-# dredge(model_1)
-# model_1  <- glmmTMB(data = traits, sla2 ~ climate + species + (1|new_block), family = Gamma(link = "log"))
-# 
-# simulateResiduals(model_1, plot= T) # better
-# shapiro.test(residuals(model_1)) # not normal
+AICc(model_sla_1, model_sla_1a, model_sla_1b, model_sla_1c, model_sla_1d, model_sla_2, model_sla_3, model_sla_4, model_sla_5,model_sla_1e, model_sla_3a)
 
 ```
 
@@ -428,69 +324,99 @@ Question: What is the effect of climate and grazing on individual species trait 
 
 Ideal models: `glmm(trait ~ Climate * Treatment + (1|Block), family = gaussian)`
 
-- could do for seed mass and leaf N, but those values would be from TRY Database
+- can't do for seed mass and leaf nitrogen since I got those values from TRY, so only one value/species
 - species chosen as those that are present across as many climate/treatment combinations as possible
 - need to think of how I would deal with multiple comparisons (bonferroni correction)?
 
-```{r, include = FALSE}
-#writing function to take species name and test model with dredge
-
-model_test <- function(species_name, trait){
-  temp_data <- traits_19[traits_19$Species == species_name,] %>% 
-    drop_na()
-  glm <- glm(data = temp_data, trait ~ Climate * Treatment, family = "gaussian", na.action = na.fail)
-  print(dredge(glm))
-}
-
-```
 ### Bromus diandrus
 ```{r, warning = FALSE}
 bro_dia <- traits %>% 
   filter(species == "Bromus diandrus") %>% 
   mutate(log_sla = log(sla))
 
-bro_dia %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# bro_dia %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 
 ```
 #### LA
-Best fit: LA ~ + (1|block)
 ```{r, warning = FALSE}
-bro_dia_la <- glmmTMB(data = bro_dia, indiv_area ~ treatment * climate + (1|new_block) , family = gaussian, na.action = na.fail)
-dredge(bro_dia_la) # best-fit intercept only
-bro_dia_la <- glmmTMB(data = bro_dia, indiv_area ~ 1 + (1|new_block), family = "gaussian", na.action = na.fail)
+# interaction
+bro_dia_la_1 <- glmmTMB(data = bro_dia, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+# no interaction
+bro_dia_la_2 <- glmmTMB(data = bro_dia, indiv_area ~ treatment + climate, family = gaussian, na.action = na.fail)
+# climate
+bro_dia_la_3 <- glmmTMB(data = bro_dia, indiv_area ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+bro_dia_la_4 <- glmmTMB(data = bro_dia, indiv_area ~ treatment, family = gaussian, na.action = na.fail)
+# null
+bro_dia_la_5 <- glmmTMB(data = bro_dia, indiv_area ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(bro_dia_la, plot= T) # looks good
+AICc(bro_dia_la_1, bro_dia_la_2, bro_dia_la_3, bro_dia_la_4, bro_dia_la_5)
 
+# best-fit intercept only
+simulateResiduals(bro_dia_la_5, plot= T) # looks good
+shapiro.test(residuals(bro_dia_la_5)) # normal
 ```
 #### SLA
-SLA ~ 1 + (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
-bro_dia_sla <- glmmTMB(data = bro_dia, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(bro_dia_sla) # best fit model is just intercept, but would need to do averaging
-bro_dia_sla <- glmmTMB(data = bro_dia, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+# interaction
+bro_dia_sla_1 <- glmmTMB(data = bro_dia, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+# no interaction
+bro_dia_sla_2 <- glmmTMB(data = bro_dia, sla ~ treatment + climate + (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+bro_dia_sla_3 <- glmmTMB(data = bro_dia, sla ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+bro_dia_sla_4 <- glmmTMB(data = bro_dia, sla ~ treatment + (1|new_block), family = gaussian, na.action = na.fail)
+# null
+bro_dia_sla_5 <- glmmTMB(data = bro_dia, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(bro_dia_sla, plot= T) # ok?
-shapiro.test(residuals(bro_dia_sla)) # normal
+AICc(bro_dia_sla_1, bro_dia_sla_2, bro_dia_sla_3, bro_dia_sla_4, bro_dia_sla_5)
+
+# best-fit intercept only
+simulateResiduals(bro_dia_sla_5, plot= T) # not good
+shapiro.test(residuals(bro_dia_sla_5)) # not normal
+
+# log transformation
+# interaction
+bro_dia_sla_1 <- glmmTMB(data = bro_dia, log_sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+# no interaction
+bro_dia_sla_2 <- glmmTMB(data = bro_dia, log_sla ~ treatment + climate + (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+bro_dia_sla_3 <- glmmTMB(data = bro_dia, log_sla ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+bro_dia_sla_4 <- glmmTMB(data = bro_dia, log_sla ~ treatment + (1|new_block), family = gaussian, na.action = na.fail)
+# null
+bro_dia_sla_5 <- glmmTMB(data = bro_dia, log_sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+
+AICc(bro_dia_sla_1, bro_dia_sla_2, bro_dia_sla_3, bro_dia_sla_4, bro_dia_sla_5)
+
+# best-fit intercept only
+simulateResiduals(bro_dia_sla_5, plot= T) # ok?
+shapiro.test(residuals(bro_dia_sla_5)) # not normal
 ```
 #### LDMC
-LDMC ~ 1 + (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
-# model
-bro_dia_ldmc <- glmmTMB(data = bro_dia, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(bro_dia_ldmc) # best fit model is intercept
-bro_dia_ldmc <- glmmTMB(data = bro_dia, ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail) # get model convergence
+# interaction
+bro_dia_ldmc_1 <- glmmTMB(data = bro_dia, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
+# no interaction
+bro_dia_ldmc_2 <- glmmTMB(data = bro_dia, ldmc ~ treatment + climate + (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+bro_dia_ldmc_3 <- glmmTMB(data = bro_dia, ldmc ~ climate , family = gaussian, na.action = na.fail)
+# treatment
+bro_dia_ldmc_4 <- glmmTMB(data = bro_dia, ldmc ~ treatment + (1|new_block), family = gaussian, na.action = na.fail)
+# null
+bro_dia_ldmc_5 <- glmmTMB(data = bro_dia, ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(bro_dia_ldmc, plot= T) # ok
-shapiro.test(residuals(bro_dia_ldmc)) # normal
+AICc(bro_dia_ldmc_1, bro_dia_ldmc_2, bro_dia_ldmc_3, bro_dia_ldmc_4, bro_dia_ldmc_5)
+
+simulateResiduals(bro_dia_ldmc_5, plot= T) # ok
+shapiro.test(residuals(bro_dia_ldmc_5)) # normal
 ```
 ### Festuca myuros
 ```{r, warning = FALSE}
@@ -501,61 +427,94 @@ fes_myu <- traits %>%
   mutate(log_ldmc = log(ldmc)) %>% 
   drop_na()
 
-fes_myu %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# fes_myu %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
 best fit: log(LA) ~ climate + (1|block)
 ```{r, warning = FALSE}
-fes_myu_la <- glmmTMB(data = fes_myu, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(fes_myu_la) # best fit is climate only
-fes_myu_la <- glmmTMB(data = fes_myu, indiv_area ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# interaction (not enough replicates)
+fes_myu_la_1 <- glmmTMB(data = fes_myu, indiv_area ~ treatment * climate, family = gaussian, na.action = na.fail)
+# no interaction
+fes_myu_la_2 <- glmmTMB(data = fes_myu, indiv_area ~ treatment + climate+ (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+fes_myu_la_3 <- glmmTMB(data = fes_myu, indiv_area ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+fes_myu_la_4 <- glmmTMB(data = fes_myu, indiv_area ~ treatment+ (1|new_block), family = gaussian, na.action = na.fail)
+# null
+fes_myu_la_5 <- glmmTMB(data = fes_myu, indiv_area ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(fes_myu_la, plot= T) # not ok
-shapiro.test(residuals(fes_myu_la)) # not normal
+AICc(fes_myu_la_1, fes_myu_la_2, fes_myu_la_3, fes_myu_la_4, fes_myu_la_5)
+
+# best-fit intercept only
+simulateResiduals(fes_myu_la_3, plot= T) # not good
+shapiro.test(residuals(fes_myu_la_3)) # normal
 
 # log transformation
-fes_myu_la <- glmmTMB(data = fes_myu, log_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(fes_myu_la) # best fit model is climate only
-fes_myu_la <- glmmTMB(data = fes_myu, log_area ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# interaction (not enough replicates)
+fes_myu_la_1 <- glmmTMB(data = fes_myu, log_la ~ treatment * climate, family = gaussian, na.action = na.fail)
+# no interaction
+fes_myu_la_2 <- glmmTMB(data = fes_myu, log_la ~ treatment + climate+ (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+fes_myu_la_3 <- glmmTMB(data = fes_myu, log_la ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+fes_myu_la_4 <- glmmTMB(data = fes_myu, log_la ~ treatment+ (1|new_block), family = gaussian, na.action = na.fail)
+# null
+fes_myu_la_5 <- glmmTMB(data = fes_myu, log_la ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(fes_myu_la, plot= T) #ok?
-shapiro.test(residuals(fes_myu_la)) # normal
+AICc(fes_myu_la_1, fes_myu_la_2, fes_myu_la_3, fes_myu_la_4, fes_myu_la_5)
+
+# best-fit intercept only
+simulateResiduals(fes_myu_la_3, plot= T) # good?
+shapiro.test(residuals(fes_myu_la_3)) # normal
+
 ```
 #### SLA
 best fit: SLA ~ 1 + (1|block)
 *need to average
 ```{r, warning = FALSE}
-fes_myu_sla <- glmmTMB(data = fes_myu, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(fes_myu_sla) # best fit is intercept only; need to average
-fes_myu_sla <- glmmTMB(data = fes_myu, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+# interaction (not enough replicates)
+fes_myu_sla_1 <- glmmTMB(data = fes_myu, sla ~ treatment * climate, family = gaussian, na.action = na.fail)
+# no interaction
+fes_myu_sla_2 <- glmmTMB(data = fes_myu, sla ~ treatment + climate+ (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+fes_myu_sla_3 <- glmmTMB(data = fes_myu, sla ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+fes_myu_sla_4 <- glmmTMB(data = fes_myu, sla ~ treatment+ (1|new_block), family = gaussian, na.action = na.fail)
+# null
+fes_myu_sla_5 <- glmmTMB(data = fes_myu, sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(fes_myu_sla, plot= T) # ok?
-shapiro.test(residuals(fes_myu_sla)) # not normal
+AICc(fes_myu_sla_1, fes_myu_sla_2, fes_myu_sla_3, fes_myu_sla_4, fes_myu_sla_5)
 
-# # log transformation
-# fes_myu_sla <- glmmTMB(data = fes_myu, log_sla ~ treatment * climate + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-# dredge(fes_myu_sla) # best fit is intercept only
-# fes_myu_sla <- glmmTMB(data = fes_myu, log_sla ~ 1 + (1|new_block) + (1|plot), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(fes_myu_sla, plot= T) # ok
-# shapiro.test(residuals(fes_myu_sla)) # normal
+# best-fit intercept only
+simulateResiduals(fes_myu_sla_5, plot= T) # ok?
+shapiro.test(residuals(fes_myu_sla_5)) # normal
 ```
 #### LDMC
 LDMC ~ 1 + (1|block)
 ```{r, warning = FALSE}
-fes_myu_ldmc <- glmmTMB(data = fes_myu, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
-dredge(fes_myu_ldmc) # best fit is intercept
-fes_myu_ldmc <- glmmTMB(data = fes_myu, ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
+# interaction (not enough replicates)
+fes_myu_ldmc_1 <- glmmTMB(data = fes_myu, ldmc ~ treatment * climate, family = gaussian, na.action = na.fail)
+# no interaction
+fes_myu_ldmc_2 <- glmmTMB(data = fes_myu, ldmc ~ treatment + climate+ (1|new_block), family = gaussian, na.action = na.fail)
+# climate
+fes_myu_ldmc_3 <- glmmTMB(data = fes_myu, ldmc ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
+# treatment
+fes_myu_ldmc_4 <- glmmTMB(data = fes_myu, ldmc ~ treatment+ (1|new_block), family = gaussian, na.action = na.fail)
+# null
+fes_myu_ldmc_5 <- glmmTMB(data = fes_myu, ldmc ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
 
-simulateResiduals(fes_myu_ldmc, plot= T) # ok?
-shapiro.test(residuals(fes_myu_ldmc)) # normal
+AICc(fes_myu_ldmc_1, fes_myu_ldmc_2, fes_myu_ldmc_3, fes_myu_ldmc_4, fes_myu_ldmc_5)
+
+# best-fit intercept only
+simulateResiduals(fes_myu_ldmc_5, plot= T) # ok?
+shapiro.test(residuals(fes_myu_ldmc_5)) # normal
 ```
 ### Bromus hordeaceus
 ```{r, warning = FALSE}
@@ -565,19 +524,17 @@ bro_hor <- traits %>%
   mutate(log_sla = log(sla)) %>% 
   drop_na()
 
-bro_hor %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# bro_hor %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 
 ```
 #### LA
-LA ~ 1 + (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
 bro_hor_la <- glmmTMB(data = bro_hor, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_hor_la) # best fit is intercept
@@ -587,8 +544,6 @@ simulateResiduals(bro_hor_la, plot= T) # good
 shapiro.test(residuals(bro_hor_la)) # not normal
 ```
 #### SLA
-SLA ~ climate+ (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
 bro_hor_sla <- glmmTMB(data = bro_hor, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_hor_sla) # best fit is climate
@@ -598,7 +553,6 @@ simulateResiduals(bro_hor_sla, plot= T) # fine
 shapiro.test(residuals(bro_hor_sla)) # normal
 ```
 #### LDMC
-LDMC ~ treatment + (1|block)
 ```{r, warning = FALSE}
 bro_hor_ldmc <- glmmTMB(data = bro_hor, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_hor_ldmc) # best fit model is treatment
@@ -614,17 +568,16 @@ bro_tec <- traits %>%
   mutate(log_ldmc = log(ldmc)) %>% 
   drop_na()
 
-bro_tec %>%
-  pivot_longer(cols = indiv_area:log_ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# bro_tec %>%
+#   pivot_longer(cols = indiv_area:log_ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
-* has huge outlier
 ```{r, warning = FALSE}
 bro_tec_la <- glmmTMB(data = bro_tec, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_tec_la) # best fit is intercept
@@ -634,8 +587,6 @@ simulateResiduals(bro_tec_la, plot= T) # so bad
 shapiro.test(residuals(bro_tec_la)) # 
 ```
 #### SLA
-SLA ~ 1 ~ (1|block)
-*need to do averaging
 ```{r, warning = FALSE}
 bro_tec_sla <- glmmTMB(data = bro_tec, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_tec_sla) # best fit model is intercept, best fit is intercept
@@ -645,7 +596,6 @@ simulateResiduals(bro_tec_sla, plot= T) # good
 shapiro.test(residuals(bro_tec_sla)) # normal
 ```
 #### LDMC
-
 ```{r, warning = FALSE}
 bro_tec_ldmc <- glmmTMB(data = bro_tec, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(bro_tec_ldmc) # best fit is intercept only
@@ -668,17 +618,16 @@ hor_mur <- traits %>%
   mutate(log_la = log(indiv_area)) %>% 
   drop_na()
 
-hor_mur %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# hor_mur %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
-la ~ 1 + (1|block)
 ```{r, warning = FALSE}
 hor_mur_la <- glmmTMB(data = hor_mur, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(hor_mur_la) # get convergece warning; best fit intercept only
@@ -689,7 +638,6 @@ shapiro.test(residuals(hor_mur_la)) # normal
 
 ```
 #### SLA
-SLA ~ 1 + (1|block)
 ```{r, warning = FALSE}
 hor_mur_sla <- glmmTMB(data = hor_mur, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(hor_mur_sla) # best fit model is intercept
@@ -699,7 +647,6 @@ simulateResiduals(hor_mur_sla, plot= T) # good
 shapiro.test(residuals(hor_mur_sla)) # normal
 ```
 #### LDMC
-LDMC ~ 1 + (1|block)
 ```{r, warning = FALSE}
 hor_mur_ldmc <- glmmTMB(data = hor_mur, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(hor_mur_ldmc) # best fit model is intercept
@@ -715,18 +662,16 @@ ero_cic <- traits %>%
   mutate(log_ldmc = log(ldmc)) %>% 
   drop_na()
 
-ero_cic %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# ero_cic %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
-LA ~ climate + (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
 
 ero_cic_la <- glmmTMB(data = ero_cic, indiv_area ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
@@ -738,7 +683,6 @@ simulateResiduals(ero_cic_la, plot=T) # ok
 shapiro.test(residuals(ero_cic_la)) # normal
 ```
 #### SLA
-SLA ~ 1 + (1|block)
 ```{r, warning = FALSE}
 ero_cic_sla <- glmmTMB(data = ero_cic, sla ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(ero_cic_sla) # best fit model is intercept only
@@ -748,8 +692,6 @@ simulateResiduals(ero_cic_sla, plot= T) # good
 shapiro.test(residuals(ero_cic_sla)) # normal
 ```
 #### LDMC
-LDMC ~ 1 + (1|block)
-* need to do averaging
 ```{r, warning = FALSE}
 ero_cic_ldmc <- glmmTMB(data = ero_cic, ldmc ~ treatment * climate + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(ero_cic_ldmc) # best-fit model climate
@@ -765,17 +707,16 @@ gal_apa <- traits %>%
   mutate(log_ldmc = log(ldmc)) %>% 
   drop_na()
 
-gal_apa %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# gal_apa %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
-LA ~ Climate + (1|Block)
 ```{r, warning = FALSE}
 gal_apa_la <- glmmTMB(data = gal_apa, indiv_area ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(gal_apa_la) # best fit is intercept only
@@ -786,8 +727,6 @@ simulateResiduals(gal_apa_la, plot=T) # good
 shapiro.test(residuals(gal_apa_la)) # normal
 ```
 #### SLA
-SLA ~ Climate + (1|Block)
-*need to do model averaging
 ```{r}
 gal_apa_sla <- glmmTMB(data = gal_apa, sla ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(gal_apa_sla) # best fit climate only, need to do model averaging
@@ -798,7 +737,6 @@ simulateResiduals(gal_apa_sla, plot=T) # good
 shapiro.test(residuals(gal_apa_sla)) # normal
 ```
 #### LDMC
-LDMC ~ Climate + (1|Block)
 ```{r, warning = FALSE}
 gal_apa_ldmc <- glmmTMB(data = gal_apa, ldmc ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(gal_apa_ldmc ) # best fit climate only
@@ -825,18 +763,16 @@ pla_not <- traits %>%
   mutate(log_sla = log(sla)) %>% 
   drop_na()
 
-pla_not %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# pla_not %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
-LA ~ 1 + (1|block)
-*need to do averaging
 ```{r, warning = FALSE}
 pla_not_la <- glmmTMB(data = pla_not, indiv_area ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(pla_not_la) #convergenct; best fit intercept only
@@ -844,19 +780,8 @@ pla_not_la <- glmmTMB(data = pla_not, indiv_area ~ 1 + (1|new_block), family = g
 
 simulateResiduals(pla_not_la, plot=T) # ok?
 shapiro.test(residuals(pla_not_la)) # not normal
-
-# # log transformation
-# pla_not_la <- glmmTMB(data = pla_not, log_la ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
-# dredge(pla_not_la) # best fit intercept only, but need to do averaging
-# pla_not_la <- glmmTMB(data = pla_not, log_la ~ climate + (1|new_block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(pla_not_la, plot=T) # ok?
-# shapiro.test(residuals(pla_not_la)) # normal
-
 ```
 #### SLA
-SLA ~ Climate + (1|Block)
-*need to do averaging
 ```{r, warning = FALSE}
 pla_not_sla <- glmmTMB(data = pla_not, sla ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
 dredge(pla_not_sla) # best fit climate only; averaging
@@ -864,15 +789,6 @@ pla_not_sla <- glmmTMB(data = pla_not, sla ~ climate + (1|new_block), family = g
 
 simulateResiduals(pla_not_sla, plot=T) # good
 shapiro.test(residuals(pla_not_sla)) # normal
-
-# # log transformation
-# pla_not_sla <- glmmTMB(data = pla_not, log_sla ~ climate * treatment + (1|new_block), family = gaussian, na.action = na.fail)
-# dredge(pla_not_sla) # best fit intercept only
-# pla_not_sla <- glmmTMB(data = pla_not, log_sla ~ 1 + (1|new_block), family = gaussian, na.action = na.fail)
-# 
-# simulateResiduals(pla_not_sla, plot=T) # ok?
-# shapiro.test(residuals(pla_not_sla)) # not normal
-
 ```
 #### LDMC 
 LDMC ~ 1 + (1|Block)
@@ -893,14 +809,14 @@ ribes <- traits %>%
   mutate(log_sla = log(sla)) %>% 
   drop_na()
 
-ribes %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# ribes %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
 ```{r, warning = FALSE}
@@ -947,14 +863,14 @@ sym_mol <- traits %>%
   mutate(log_sla = log(sla)) %>% 
   drop_na()
 
-sym_mol %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# sym_mol %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
 LA ~ 1 + (1|block)
@@ -993,14 +909,14 @@ eri_nau <- traits %>%
   mutate(log_ldmc = log(ldmc)) %>% 
   drop_na()
 
-eri_nau %>%
-  pivot_longer(cols = indiv_area:ldmc,
-               names_to = "traits",
-               values_to = "value") %>%
-  ggplot(aes(x = climate, y = value, color = treatment)) +
-  geom_boxplot() +
-  theme_bw() +
-  facet_grid(~ traits, scales = "free")
+# eri_nau %>%
+#   pivot_longer(cols = indiv_area:ldmc,
+#                names_to = "traits",
+#                values_to = "value") %>%
+#   ggplot(aes(x = climate, y = value, color = treatment)) +
+#   geom_boxplot() +
+#   theme_bw() +
+#   facet_grid(~ traits, scales = "free")
 ```
 #### LA
 LA ~ 1 + block
