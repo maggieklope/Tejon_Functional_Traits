@@ -29,16 +29,16 @@ library(ggeffects)
 
 other_traits <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
-# cwm_traits_adj <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
-#   left_join(other_traits, by = "species_name") %>% 
-#   mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
-#   mutate(weighted_sla = sla * Abundance) %>% 
-#   mutate(weighted_ldmc = ldmc * Abundance) %>%
-#   mutate(weighted_seed_mass = seed_mass * Abundance) %>%
-#   mutate(weighted_n = leaf_n * Abundance) %>%
-#   group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
-#   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-#   dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
+cwm_traits_adj <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+  left_join(other_traits, by = "species_name") %>%
+  mutate(weighted_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
+  mutate(weighted_sla = sla * Abundance) %>%
+  mutate(weighted_ldmc = ldmc * Abundance) %>%
+  mutate(weighted_seed_mass = seed_mass * Abundance) %>%
+  mutate(weighted_n = leaf_n * Abundance) %>%
+  group_by(climate, treatment, Block) %>% #grouping by climate, treatment, and block
+  summarise_all(mean, na.rm = TRUE) %>% #finding the mean
+  dplyr::select(climate, treatment, Block, weighted_la, weighted_sla, weighted_ldmc, weighted_seed_mass, weighted_n)
 
 # log transformation for seed mass & leaf n
 # cwm_traits_adj <- cwm_traits_adj %>% 
@@ -116,7 +116,6 @@ Ex: leaf area ~ climate + treatment + functional group + climate:functional grou
 
 ###### a. one-model
 ```{r, warning=FALSE}
-
 #### raw data ###
 la_data <- functional_data %>% 
   dplyr::select(Block, climate, treatment, functional_group, leaf_area) %>% 
@@ -680,12 +679,64 @@ simulateResiduals(forb_funct_seed_mass, plot= T) # bad
 
 ### Contribution of functinoal group turnover to variance
 ```{r}
-functional_avg <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
-  left_join(other_traits, by = "species_name") %>% 
-  group_by(climate, Block, treatment, functional_group) %>%
+cwm_funct <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+  left_join(other_traits, by = "species_name") %>%
+  mutate(weighted_specific_la = leaf_area * Abundance) %>% #multiplying trait values by species abundance
+  mutate(weighted_specific_sla = sla * Abundance) %>%
+  mutate(weighted_specific_ldmc = ldmc * Abundance) %>%
+  mutate(weighted_specific_seed_mass = seed_mass * Abundance) %>%
+  mutate(weighted_specific_n = leaf_n * Abundance) %>%
+  group_by(climate, treatment, Block, functional_group) %>% #grouping by climate, treatment, and block
   summarise_all(mean, na.rm = TRUE) %>% #finding the mean
-  dplyr::select(Block, climate, treatment, functional_group, leaf_area, sla, ldmc, seed_mass, leaf_n)
+  dplyr::select(Block, climate, treatment, functional_group, Abundance, weighted_specific_la, weighted_specific_sla, weighted_specific_ldmc, weighted_specific_seed_mass, weighted_specific_n)
 
+funct_itv_data <-  read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>%
+  left_join(other_traits, by = "species_name") %>% 
+  group_by(functional_group) %>%
+  summarise_all(mean, na.rm = TRUE) %>% 
+  dplyr::select(functional_group, leaf_area, sla, ldmc, seed_mass, leaf_n) %>% 
+  rename(leaf_area_fixed = leaf_area, sla_fixed = sla, ldmc_fixed = ldmc, seed_mass_fixed = seed_mass, leaf_n_fixed = leaf_n) %>% 
+  left_join(cwm_funct, by = "functional_group") %>% 
+  mutate(weighted_fixed_la = leaf_area_fixed * Abundance, 
+         weighted_fixed_sla = sla_fixed * Abundance,
+         weighted_fixed_ldmc = ldmc_fixed * Abundance,
+         weighted_fixed_seed_mass = seed_mass_fixed * Abundance,
+         weighted_fixed_leaf_n = leaf_n_fixed * Abundance)
+# Leaf Area
+shapiro.test(residuals(aov(weighted_specific_la ~ climate * treatment, data = funct_itv_data))) # not normal
+shapiro.test(residuals(aov(weighted_fixed_la ~ climate * treatment, data = funct_itv_data))) # not normal
+shapiro.test(residuals(aov((weighted_specific_la - weighted_fixed_la) ~ climate * treatment, data = funct_itv_data))) # not normal
+
+shapiro.test(residuals(aov(log(weighted_specific_la) ~ climate * treatment, data = funct_itv_data))) # normal
+shapiro.test(residuals(aov(log(weighted_fixed_la) ~ climate * treatment, data = funct_itv_data))) # normal
+shapiro.test(residuals(aov(log((weighted_specific_la - weighted_fixed_la)) ~ climate * treatment, data = funct_itv_data))) # normal
+
+
+la_flex <- trait.flex.anova(~climate*treatment, log(weighted_specific_la), log(weighted_fixed_la), data = funct_itv_data)
+print(la_flex)
+plot(la_flex, use.percentage=T)
+
+# SLA
+shapiro.test(residuals(aov(weighted_specific_sla ~ climate * treatment, data = funct_itv_data))) # normal
+shapiro.test(residuals(aov(weighted_fixed_sla ~ climate * treatment, data = funct_itv_data))) # normal
+shapiro.test(residuals(aov((weighted_specific_sla - weighted_fixed_sla) ~ climate * treatment, data = funct_itv_data))) # not normal
+
+sla_flex <- trait.flex.anova(~climate*treatment, weighted_specific_sla, weighted_fixed_sla, data = funct_itv_data)
+print(sla_flex)
+plot(sla_flex, use.percentage=T)
+
+# LDMC
+lm_1 <- lm(log(weighted_specific_ldmc) ~ climate * treatment, data = funct_itv_data)
+lm_2 <- lm(weighted_fixed_ldmc ~ climate * treatment, data = funct_itv_data)
+lm_3 <- lm((weighted_specific_ldmc - weighted_fixed_ldmc) ~ climate * treatment, data = funct_itv_data)
+simulateResiduals(lm_1, plot = T) # looks ok
+shapiro.test(residuals(lm_1)) # not normal
+
+ldmc_flex_2 <- trait.flex.anova(~climate*treatment, weighted_specific_ldmc, weighted_fixed_ldmc, data = funct_itv_data)
+ldmc_flex_3 <- trait.flex.anova(~climate*treatment * functional_group, weighted_specific_ldmc, weighted_fixed_ldmc, data = funct_itv_data)
+print(ldmc_flex_2)
+print(ldmc_flex_3)
+plot(ldmc_flex_2, use.percentage=T)
 
 ```
 
