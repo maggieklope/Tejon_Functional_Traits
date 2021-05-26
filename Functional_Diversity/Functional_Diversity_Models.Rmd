@@ -23,15 +23,17 @@ library(gt)
 library(knitr)
 library(ggsignif) # for adding significance comparisons to graphs
 library(ggeffects)
+library(gridExtra)
+library(car)
 ```
 
 ```{r tidy data, include=FALSE}
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
 
 #making a df just for functional diveristy calculations
-for_FD <- read_csv("~/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
+for_FD <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/cwm_traits_updated.csv") %>% 
   left_join(other_traits, by = "species_name") %>% 
-  select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>%
+  dplyr::select(climate, treatment, Block, species_name, Abundance, leaf_area, sla, ldmc, seed_mass, leaf_n) %>%
   drop_na
 
 #abundance data in correct format:
@@ -40,7 +42,7 @@ fd_abund <- function(Climate, Treatment){
     filter(climate == Climate) %>% 
     filter(treatment == Treatment) %>% 
     arrange(species_name) %>% 
-    select(Block, species_name, Abundance) %>%
+    dplyr::select(Block, species_name, Abundance) %>%
     pivot_wider(names_from = species_name, values_from = Abundance) %>%
     replace(is.na(.), 0) %>% 
     column_to_rownames(var = "Block"))
@@ -303,6 +305,8 @@ shapiro.test(residuals(FRic_5)) # normal
 ```{r, warning=FALSE}
 # interaction
 FEve_1 <- glmmTMB(data = FD_all, FEve ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
+dredge(FEve_1)
+FEve_dredge <- dredge(FEve_1)
 
 # no interaction
 FEve_2 <- glmmTMB(data = FD_all, FEve ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
@@ -321,6 +325,46 @@ AICc(FEve_1, FEve_2, FEve_3, FEve_4, FEve_5) # best model is null? but followed 
 simulateResiduals(FEve_5, plot = T) # looks good
 shapiro.test(residuals(FEve_5)) # normal
 
+### model averaging
+FEve_avg <- model.avg(get.models(FEve_dredge, subset = delta < 2)) # gets averaged coeffiients
+
+FEve_sum <- summary(FEve_avg)
+df_1 <- as.data.frame(FEve_sum$coefmat.full)
+
+CI <- as.data.frame(confint(FEve_avg, full=T)) # get confidence intervals for full model
+
+library(data.table)
+df_1$CI.min <- CI$`2.5 %` #pulling out CIs and putting into same df as coefficient estimates
+df_1$CI.max <- CI$`97.5 %`# order of coeffients same in both, so no mixups; but should check anyway
+setDT(df_1, keep.rownames = "treatment") #put rownames into column
+names(df_1) <- gsub(" ", "", names(df_1)) # remove spaces from column headers
+df_1 <- df_1 %>% 
+  mutate(treatment = ifelse(treatment == "cond((Int))", "Open",
+                        ifelse(treatment == "cond(treatmentPartial)", "Partial", 
+                               ifelse(treatment == "cond(treatmentTotal)", "Total", treatment))))
+  
+
+ggplot(data = df_1, aes(x = treatment, y = Estimate, color = treatment))+ 
+  geom_point() + #points for coefficient estimates
+  geom_errorbar(aes(ymin=CI.min, ymax=CI.max),
+                width=.2,lwd=1) +
+  scale_color_manual(values = c("gray30", "gray50", "gray80"))+
+  theme(
+    panel.background = element_rect(fill = "white",
+                                    colour = "white",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "gray90"),
+    axis.line = element_line(size = 0.5, linetype = "solid",
+                             colour = "gray85"),
+    strip.background = element_rect(fill = "gray85"),
+    strip.text = element_text(colour = 'gray20'))
+
+emmeans(FEve_avg,  pairwise ~ treatment)
+
+ref_grid(object = FEve_avg, data = FD_all)
 
 ```
 
@@ -348,13 +392,18 @@ simulateResiduals(FDiv_1, plot = T) # looks good
 shapiro.test(residuals(FDiv_1)) # normal
 
 # pairwise comparisons
-emmeans(FDiv, pairwise ~ climate)
-emmeans(FDiv, pairwise ~ treatment)
-emmeans(FDiv, pairwise ~ climate * treatment)
+emmeans(FDiv_1, pairwise ~ climate)
+emmeans(FDiv_1, pairwise ~ treatment)
+emmeans(FDiv_1, pairwise ~ climate * treatment)
 
 # estimated marginal means plot
-dat <- ggpredict(FDiv, terms = c("treatment", "climate"))
+dat <- ggpredict(FDiv_1, terms = c("treatment", "climate"))
 plot(dat, facet = TRUE)
+dat <- ggpredict(FDiv_1, terms = c("climate", "treatment"))
+plot(dat, facet = TRUE)
+
+FDis_plot <- plot(ggpredict(FDis_5, terms = c("treatment", "climate")),  colors = ggeffects_colors, facet = TRUE)
+
 ```
 
 #### FDis
@@ -381,9 +430,9 @@ simulateResiduals(FDis_1, plot = T) # looks good
 shapiro.test(residuals(FDis_1)) # normal
 
 # pairwise comparisons
-emmeans(FDis, pairwise ~ climate)
-emmeans(FDis, pairwise ~ treatment)
-emmeans(FDis, pairwise ~ climate * treatment)
+emmeans(FDis_1, pairwise ~ climate)
+emmeans(FDis_1, pairwise ~ treatment)
+emmeans(FDis_1, pairwise ~ climate * treatment)
 
 # estimated marginal means plot
 dat <- ggpredict(FDis_1, terms = c("treatment", "climate"))
@@ -392,118 +441,116 @@ plot(dat, facet = TRUE)
 ```
 
 #### Best-Fit & AIC Table
-
 ```{r, include=FALSE}
 
-dredge_FRic <- as.data.frame(dredge(FRic)) %>%
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "FRic") %>% 
-  dplyr::select(CWM)
-
-dredge_FEve <- as.data.frame(dredge(FEve)) %>%
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "FEve") %>%
-  dplyr::select(CWM)
-
-dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "FDiv") %>%
-  dplyr::select(CWM, climate, treatment, "climate:treatment")
-
-dredge_FDis <- as.data.frame(dredge(FDis)) %>%
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "FDis") %>%
-  dplyr::select(CWM, climate, treatment, "climate:treatment")
-
-dredge_table <- dredge_FRic %>% 
-  full_join(dredge_FEve) %>% 
-  full_join(dredge_FDiv) %>% 
-  full_join(dredge_FDis) %>% 
-  mutate(climate = str_replace(climate, "\\+","x")) %>%
-  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
-  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
-
-pretty_table <- dredge_table %>% 
-  as_tibble() %>% 
-  gt() %>% 
-  tab_header(
-    title = "FD Best-Fit Models"
-  ) %>% 
-  tab_spanner(
-    label = "Fixed Effects Terms",
-    columns = vars(climate, treatment, "climate:treatment")
-  ) %>% 
-  # fmt_number(
-  #   columns = vars(AICc),
-  #   decimals = 2
-  # ) %>% 
-  fmt_missing(
-    columns = vars(climate, treatment, "climate:treatment"),
-    missing_text = " "
-  ) %>% 
-  tab_source_note(
-    source_note = "x indicates selection of fixed effect term for best-fit model"
-  )
-
-pretty_table
-
-# gtsave(data = pretty_table, filename = "FD_Best_Fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
+# dredge_FRic <- as.data.frame(dredge(FRic)) %>%
+#   filter(AICc == min(AICc)) %>% 
+#   mutate(CWM = "FRic") %>% 
+#   dplyr::select(CWM)
+# 
+# dredge_FEve <- as.data.frame(dredge(FEve)) %>%
+#   filter(AICc == min(AICc)) %>% 
+#   mutate(CWM = "FEve") %>%
+#   dplyr::select(CWM)
+# 
+# dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
+#   filter(AICc == min(AICc)) %>% 
+#   mutate(CWM = "FDiv") %>%
+#   dplyr::select(CWM, climate, treatment, "climate:treatment")
+# 
+# dredge_FDis <- as.data.frame(dredge(FDis)) %>%
+#   filter(AICc == min(AICc)) %>% 
+#   mutate(CWM = "FDis") %>%
+#   dplyr::select(CWM, climate, treatment, "climate:treatment")
+# 
+# dredge_table <- dredge_FRic %>% 
+#   full_join(dredge_FEve) %>% 
+#   full_join(dredge_FDiv) %>% 
+#   full_join(dredge_FDis) %>% 
+#   mutate(climate = str_replace(climate, "\\+","x")) %>%
+#   mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+#   mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
+# 
+# pretty_table <- dredge_table %>% 
+#   as_tibble() %>% 
+#   gt() %>% 
+#   tab_header(
+#     title = "FD Best-Fit Models"
+#   ) %>% 
+#   tab_spanner(
+#     label = "Fixed Effects Terms",
+#     columns = vars(climate, treatment, "climate:treatment")
+#   ) %>% 
+#   # fmt_number(
+#   #   columns = vars(AICc),
+#   #   decimals = 2
+#   # ) %>% 
+#   fmt_missing(
+#     columns = vars(climate, treatment, "climate:treatment"),
+#     missing_text = " "
+#   ) %>% 
+#   tab_source_note(
+#     source_note = "x indicates selection of fixed effect term for best-fit model"
+#   )
+# 
+# pretty_table
+# 
+# # gtsave(data = pretty_table, filename = "FD_Best_Fit_table.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
 #### AIC Supplement Table
 ```{r, include=FALSE}
-dredge_FRic <- as.data.frame(dredge(FRic)) %>%
-  mutate(CWM = "FRic") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-# dredge_FEve <- as.data.frame(dredge(FEve)) %>%
-#   mutate(CWM = "FEve") %>%
+# dredge_FRic <- as.data.frame(dredge(FRic)) %>%
+#   mutate(CWM = "FRic") %>% 
 #   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
-  mutate(CWM = "FDiv") %>%
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-dredge_FDis <- as.data.frame(dredge(FDis)) %>%
-  mutate(CWM = "FDis") %>%
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-dredge_table <- dredge_FRic %>% 
-  full_join(dredge_FEve) %>% 
-  full_join(dredge_FDiv) %>% 
-  full_join(dredge_FDis) %>% 
-  mutate(climate = str_replace(climate, "\\+","x")) %>%
-  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
-  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
-dredge_table
-
-fd_aic_sup <- dredge_table %>% 
-  as_tibble() %>% 
-  dplyr::group_by(CWM) %>%
-  gt() %>% 
-  tab_header(
-    title = "FD Best-Fit Models"
-  ) %>% 
-  tab_spanner(
-    label = "Fixed Effects Terms",
-    columns = vars(climate, treatment, "climate:treatment")
-  ) %>% 
-  fmt_missing(
-    columns = vars(climate, treatment, "climate:treatment"),
-    missing_text = " "
-  ) %>% 
-  tab_source_note(
-    source_note = "x indicates selection of fixed effect term for best-fit model"
-  )  %>% 
-  cols_align(align = "center")
-
-fd_aic_sup
+# 
+# # dredge_FEve <- as.data.frame(dredge(FEve)) %>%
+# #   mutate(CWM = "FEve") %>%
+# #   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# 
+# dredge_FDiv <- as.data.frame(dredge(FDiv)) %>%
+#   mutate(CWM = "FDiv") %>%
+#   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# 
+# dredge_FDis <- as.data.frame(dredge(FDis)) %>%
+#   mutate(CWM = "FDis") %>%
+#   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# 
+# dredge_table <- dredge_FRic %>% 
+#   full_join(dredge_FEve) %>% 
+#   full_join(dredge_FDiv) %>% 
+#   full_join(dredge_FDis) %>% 
+#   mutate(climate = str_replace(climate, "\\+","x")) %>%
+#   mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+#   mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
+# dredge_table
+# 
+# fd_aic_sup <- dredge_table %>% 
+#   as_tibble() %>% 
+#   dplyr::group_by(CWM) %>%
+#   gt() %>% 
+#   tab_header(
+#     title = "FD Best-Fit Models"
+#   ) %>% 
+#   tab_spanner(
+#     label = "Fixed Effects Terms",
+#     columns = vars(climate, treatment, "climate:treatment")
+#   ) %>% 
+#   fmt_missing(
+#     columns = vars(climate, treatment, "climate:treatment"),
+#     missing_text = " "
+#   ) %>% 
+#   tab_source_note(
+#     source_note = "x indicates selection of fixed effect term for best-fit model"
+#   )  %>% 
+#   cols_align(align = "center")
+# 
+# fd_aic_sup
 
 # gtsave(data = fd_aic_sup, filename = "FD_AIC_Supp.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
 ```
-
-
+#### emmeans graphs
 ```{r, include=FALSE}
 #### EMM Graphs
 
@@ -600,7 +647,7 @@ FDiv_plot <- emm_plot(FDiv_emmeans) +
 # ggsave("FDiv_emmean.png", plot = FDiv_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 
 # FDis
-FDis_emmeans <- emmeans(FDis, ~ treatment | climate)
+FDis_emmeans <- emmeans(FDis_1, ~ treatment | climate)
 # emmeans(FDis, pairwise ~ treatment | climate)
 FDis_plot <- emm_plot(FDis_emmeans) +
   labs(title = "Functional Dispersion") +
@@ -629,10 +676,13 @@ FDis_plot <- emm_plot(FDis_emmeans) +
     y_position = 1.8, xmin = 7, xmax = 9,
     tip_length = c(.05, .35))
 
+FDis_plot
+
 # ggsave("FDis_emmean.png", plot = FDis_plot, path = "~/github/Tejon_Functional_Traits/Figures", height = 4, width = 5, bg = "transparent")
 
 ```
 
+#### ggeffects graphs
 ```{r, include=FALSE}
 
 # ggeffects Graphs
@@ -707,17 +757,24 @@ graphs <- function(model_name, model_terms, plot_title, y_label, y_positions = 2
 
 FDiv_plot <- graphs(model_name = FDiv_1,
        model_terms = c("treatment", "climate"),
-       plot_title = "Leaf Area CWM",
-       y_label = "Predicted Leaf Area CWM",
-       y_positions = 5)
+       plot_title = "Functional Divergence (FDiv)",
+       y_label = "FDiv",
+       y_positions = c(.75, 1.1, 1)) +
+  expand_limits(y = 1.2)
+
+FDiv_plot
 
 FDis_plot <- graphs(model_name = FDis_1,
        model_terms = c("treatment", "climate"),
-       plot_title = "Leaf Area CWM",
-       y_label = "Predicted Leaf Area CWM",
-       y_positions = 5)
+       plot_title = "Functional Dispersion (FDis)",
+       y_label = "FDis",
+       y_positions = c(1.6, 1.75, 1.95, 1.85))+
+  expand_limits(y = 2.1)
+
+FDis_plot
 
 FD_signif_all <- grid.arrange(FDiv_plot, FDis_plot)
 
+ggsave("FD_ggeffects.png", plot = FD_signif_all, path = "~/github/Tejon_Functional_Traits/Figures/ggeffects_graphs", height = 7, width = 5)
 ```
 
