@@ -8,9 +8,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # loading packages
-packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt", "effectsize")
+packages <- c("tidyverse", "ggplot2", "glmmTMB","DHARMa", "MuMIn", "emmeans", "tibble", "multcomp", "car", "ggsignif", "ggeffects", "gt", "effectsize", "lme4")
 (lapply(packages, library, character.only = TRUE))
-
 
 # loading trait data
 other_traits <- read_csv("/Users/User_2/github/Tejon_Functional_Traits/Datasheets/seed_mass_leaf_N.csv")
@@ -58,12 +57,13 @@ cwm_bar_data <- cwm_traits_adj %>%
                values_to = "value")
 
 ggplot(cwm_bar_data, aes(x = climate, y = value)) +
-  geom_boxplot(aes(fill = treatment)) +
+  geom_boxplot(aes(color = treatment)) +
   theme_bw() +
   facet_wrap(~traits, scales = "free", nrow = 3) +
-  scale_fill_manual(values = c("#ffffff", "#d9d9d9", "#969696"))
+  scale_color_manual(values = c("gray80", "gray50", "gray30"))
+  # scale_fill_manual(values = c("#f46d43", "#fee090", "#74add1"))
 
-# ggsave("CWM_barchart.png", path = "~/Users/User_2/github//Tejon_Functional_Traits/Figures", width = 9, height = 7)
+# ggsave("CWM_barchart.png", path = "/Users/User_2/github//Tejon_Functional_Traits/Figures", width = 9, height = 7)
 
 ```
 
@@ -71,41 +71,41 @@ ggplot(cwm_bar_data, aes(x = climate, y = value)) +
 
 ```{r}
 # # climate model:
-# LA_CWM_1 <- lm(data = cwm_traits_adj, weighted_la ~ climate)
+# LA_CWM_1a <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate + (1|Block), na.action = na.fail)
 # 
 # # treatment model:
-# LA_CWM_2 <- lm(data = cwm_traits_adj, weighted_la ~ treatment)
+# LA_CWM_2a <- glmmTMB(data = cwm_traits_adj, weighted_la ~ treatment + (1|Block), na.action = na.fail)
 # 
 # # interaction model:
-# LA_CWM_3 <- lm(data = cwm_traits_adj, weighted_la ~ climate * treatment)
+# LA_CWM_3a <- gglmmTMB(data = cwm_traits_adj, weighted_la ~ climate * treatment + (1|Block), na.action = na.fail)
 # 
 # # no interaction
-# LA_CWM_4 <- lm(data = cwm_traits_adj, weighted_la ~ climate + treatment)
+# LA_CWM_4a <- glmmTMB(data = cwm_traits_adj, weighted_la ~ climate + treatment + (1|Block), na.action = na.fail)
 # 
 # # null model:
-# LA_CWM_5 <- lm(data = cwm_traits_adj, weighted_la ~ 1)
+# LA_CWM_5a <- glmmTMB(data = cwm_traits_adj, weighted_la ~ 1 + (1|Block), na.action = na.fail)
 # 
-# AICc(LA_CWM_1, LA_CWM_2, LA_CWM_3, LA_CWM_4, LA_CWM_5) #best model: weighted_la ~ climate * treatment
+# AICc(LA_CWM_1a, LA_CWM_2a, LA_CWM_3a,  LA_CWM_4a, LA_CWM_5a) #best model: weighted_la ~ climate * treatment
 # 
 # # Checking data
-# simulateResiduals(LA_CWM_3, plot = T) # not good
-
+# simulateResiduals(LA_CWM_3a, plot = T) # not good
 
 # log transformation
 # climate model:
-LA_CWM_1 <- lm(data = cwm_traits_adj, log_la ~ climate)
+LA_CWM_1 <- glmmTMB(data = cwm_traits_adj, log_la ~ climate + (1|Block), family = gaussian(), na.action = na.fail)
 
 # treatment model:
-LA_CWM_2 <- lm(data = cwm_traits_adj, log_la ~ treatment)
+LA_CWM_2 <- glmmTMB(data = cwm_traits_adj, log_la ~ treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # interaction model:
-LA_CWM_3 <- lm(data = cwm_traits_adj, log_la ~ climate * treatment, na.action = na.fail)
+LA_CWM_3 <- glmmTMB(data = cwm_traits_adj, log_la ~ climate * treatment + (1|Block), family = gaussian(), na.action = na.fail)
+LA_CWM_3b <- glm(data = cwm_traits_adj, log_la ~ climate * treatment, family = gaussian(), na.action = na.fail)
 
 # no interaction
-LA_CWM_4 <- lm(data = cwm_traits_adj, log_la ~ climate + treatment)
+LA_CWM_4 <- glmmTMB(data = cwm_traits_adj, log_la ~ climate + treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # null model:
-LA_CWM_5 <- lm(data = cwm_traits_adj, log_la ~ 1)
+LA_CWM_5 <- glmmTMB(data = cwm_traits_adj, log_la ~ 1 + (1|Block), family = gaussian(), na.action = na.fail)
 
 AICc(LA_CWM_1, LA_CWM_2, LA_CWM_3, LA_CWM_4, LA_CWM_5) #best model: weighted_la ~ climate * treatment
 
@@ -113,22 +113,14 @@ AICc(LA_CWM_1, LA_CWM_2, LA_CWM_3, LA_CWM_4, LA_CWM_5) #best model: weighted_la 
 simulateResiduals(LA_CWM_3, plot = T) # good
 shapiro.test(residuals(LA_CWM_3)) # normal
 
-# variances are equal
-leveneTest(data = cwm_traits_adj, log_la ~ climate * treatment) 
+# # significance & comparisons
+# library(modEvA)
+# r.squaredGLMM(LA_CWM_3)
+# RsqGLM(LA_CWM_3b)
 
-# significane & comparisons
+LA_CWM_3 
 summary(LA_CWM_3)
-anova(LA_CWM_3)
-n_aov <- aov(LA_CWM_3)
-TukeyHSD(n_aov)
-emmeans(n_aov, pairwise ~ climate + treatment)
-
-la_comparisons <- as.data.frame(TukeyHSD(n_aov)$'climate:treatment') %>% 
-  rename(p_value = 'p adj') %>% 
-  dplyr::filter(p_value <= 0.05)
-
-# effect size? not sure which method is the best
-# eta_squared(n_aov)
+emmeans(LA_CWM_3, pairwise ~ climate + treatment)
 
 # pairwise comparison plots
 plot(emmeans(n_aov, ~ climate + treatment)) 
@@ -147,20 +139,19 @@ emmeans(LA_CWM_3, pairwise ~ climate * treatment)
 
 ```{r}
 # interaction model
-SLA_CWM_1  <- lm(data = cwm_traits_adj, weighted_sla ~ climate * treatment) 
-sla_glm <- glm(data = cwm_traits_adj, weighted_sla ~ climate * treatment, family = gaussian, na.action = na.fail) 
+SLA_CWM_1  <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate * treatment + (1|Block), family = gaussian(), na.action = na.fail) 
 
 # no interaction
-SLA_CWM_2  <- lm(data = cwm_traits_adj, weighted_sla ~ climate + treatment) 
+SLA_CWM_2  <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate + treatment + (1|Block), family = gaussian(), na.action = na.fail) 
 
 # climate model
-SLA_CWM_3  <- lm(data = cwm_traits_adj, weighted_sla ~ climate) 
+SLA_CWM_3  <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ climate + (1|Block), family = gaussian(), na.action = na.fail) 
 
 # treatment model
-SLA_CWM_4  <- lm(data = cwm_traits_adj, weighted_sla ~ treatment) 
+SLA_CWM_4  <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ treatment + (1|Block), family = gaussian(), na.action = na.fail) 
 
 # null model
-SLA_CWM_5  <- lm(data = cwm_traits_adj, weighted_sla ~ 1) 
+SLA_CWM_5  <- glmmTMB(data = cwm_traits_adj, weighted_sla ~ 1 + (1|Block), family = gaussian(), na.action = na.fail) 
 
 AICc(SLA_CWM_1, SLA_CWM_2, SLA_CWM_3, SLA_CWM_4, SLA_CWM_5) # best model is interaction model
 
@@ -185,24 +176,21 @@ plot(emmeans(SLA_CWM_1, ~ climate * treatment))
 
 ```{r}
 # interaction model
-LDMC_CWM_1 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment)
-simulateResiduals(LDMC_CWM_1, plot= T) #looks good
-shapiro.test(residuals(LDMC_CWM_1)) #normal
-anova(LDMC_CWM_1)
+LDMC_CWM_1 <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate * treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # no interaction model
-LDMC_CWM_2 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment)
+LDMC_CWM_2 <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # climate model
-LDMC_CWM_3 <- lm(data = cwm_traits_adj, weighted_ldmc ~ climate)
+LDMC_CWM_3 <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ climate + (1|Block), family = gaussian(), na.action = na.fail)
 
 # treatment model
-LDMC_CWM_4 <- lm(data = cwm_traits_adj, weighted_ldmc ~treatment)
+LDMC_CWM_4 <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # null model
-LDMC_CWM_5 <- lm(data = cwm_traits_adj, weighted_ldmc ~ 1)
+LDMC_CWM_5 <- glmmTMB(data = cwm_traits_adj, weighted_ldmc ~ 1 + (1|Block), family = gaussian(), na.action = na.fail)
 
-AICc(LDMC_CWM_1, LDMC_CWM_2, LDMC_CWM_3, LDMC_CWM_4, LDMC_CWM_5) # best fit model is not interaction
+AICc(LDMC_CWM_1, LDMC_CWM_2, LDMC_CWM_3, LDMC_CWM_4, LDMC_CWM_5) # best fit model is no interaction
 
 simulateResiduals(LDMC_CWM_2, plot= T) #looks good
 shapiro.test(residuals(LDMC_CWM_2)) #normal
@@ -226,21 +214,21 @@ plot(emmeans(LDMC_CWM_2, ~ climate + treatment))
 #### d. Seed mass CWM
 
 ```{r}
-
+# 
 # # interaction model
-# seed_mass_CWM_1 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment, family = gaussian, na.action = na.fail)
+# seed_mass_CWM_1 <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate * treatment + (1|Block), family = gaussian, na.action = na.fail)
 # 
 # # no interaction model
-# seed_mass_CWM_2 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment, family = gaussian, na.action = na.fail)
+# seed_mass_CWM_2 <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + treatment + (1|Block), family = gaussian, na.action = na.fail)
 # 
 # # climate model
-# seed_mass_CWM_3 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ climate, family = gaussian, na.action = na.fail)
+# seed_mass_CWM_3 <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ climate + (1|Block), family = gaussian, na.action = na.fail)
 # 
 # # treatment model
-# seed_mass_CWM_4 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ treatment, family = gaussian, na.action = na.fail)
+# seed_mass_CWM_4 <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ treatment + (1|Block), family = gaussian, na.action = na.fail)
 # 
 # # null model
-# seed_mass_CWM_5 <- glm(data = cwm_traits_adj, weighted_seed_mass ~ 1, family = gaussian, na.action = na.fail)
+# seed_mass_CWM_5 <- glmmTMB(data = cwm_traits_adj, weighted_seed_mass ~ 1 + (1|Block), family = gaussian, na.action = na.fail)
 # 
 # AICc(seed_mass_CWM_1, seed_mass_CWM_2, seed_mass_CWM_3, seed_mass_CWM_4, seed_mass_CWM_5) # lowest AICc is no interacito model
 # 
@@ -251,22 +239,19 @@ plot(emmeans(LDMC_CWM_2, ~ climate + treatment))
 # log transformation
 
 # interaction model
-seed_mass_CWM_1 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate * treatment)
-simulateResiduals(seed_mass_CWM_1, plot= T) #looks good
-shapiro.test(residuals(seed_mass_CWM_1)) #normal
-anova(seed_mass_CWM_1)
+seed_mass_CWM_1 <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate * treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # no interaction model
-seed_mass_CWM_2 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate + treatment)
+seed_mass_CWM_2 <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate + treatment+ (1|Block), family = gaussian(), na.action = na.fail)
 
 # climate model
-seed_mass_CWM_3 <- lm(data = cwm_traits_adj, log_seed_mass ~ climate)
+seed_mass_CWM_3 <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ climate+ (1|Block), family = gaussian(), na.action = na.fail)
 
 # treatment model
-seed_mass_CWM_4 <- lm(data = cwm_traits_adj, log_seed_mass ~ treatment)
+seed_mass_CWM_4 <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ treatment+ (1|Block), family = gaussian(), na.action = na.fail)
 
 # null model
-seed_mass_CWM_5 <- lm(data = cwm_traits_adj, log_seed_mass ~ 1)
+seed_mass_CWM_5 <- glmmTMB(data = cwm_traits_adj, log_seed_mass ~ 1+ (1|Block), family = gaussian(), na.action = na.fail)
 
 AICc(seed_mass_CWM_1, seed_mass_CWM_2, seed_mass_CWM_3, seed_mass_CWM_4, seed_mass_CWM_5) # lowest AICc is no interaction model
 
@@ -296,35 +281,25 @@ plot(emmeans(seed_mass_CWM_2, ~ climate + treatment))
 ```{r} 
 
 # interaction model
-n_CWM_1 <- lm(data = cwm_traits_adj, weighted_n ~ climate * treatment)
-shapiro.test(residuals(n_CWM_1)) 
-qqPlot(residuals(n_CWM_1))
-anova(n_CWM_1)
+n_CWM_1 <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate * treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # no interaction model
-n_CWM_2 <- lm(data = cwm_traits_adj, weighted_n ~ climate + treatment)
-# n_CWM_2 <- glm(data = cwm_traits_adj, weighted_n ~ climate + treatment, family = gaussian, na.action = na.fail)
+n_CWM_2 <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # climate model
-n_CWM_3 <- lm(data = cwm_traits_adj, weighted_n ~ climate)
-# n_CWM_3 <- glm(data = cwm_traits_adj, weighted_n ~ climate, family = gaussian, na.action = na.fail)
+n_CWM_3 <- glmmTMB(data = cwm_traits_adj, weighted_n ~ climate + (1|Block), family = gaussian(), na.action = na.fail)
 
 # treatment model
-n_CWM_4 <- lm(data = cwm_traits_adj, weighted_n ~ treatment)
-# n_CWM_4 <- glm(data = cwm_traits_adj, weighted_n ~ treatment, family = gaussian, na.action = na.fail)
+n_CWM_4 <- glmmTMB(data = cwm_traits_adj, weighted_n ~ treatment + (1|Block), family = gaussian(), na.action = na.fail)
 
 # intercept model
-n_CWM_5 <- lm(data = cwm_traits_adj, weighted_n ~ 1)
-# n_CWM_5 <- glm(data = cwm_traits_adj, weighted_n ~ 1, family = gaussian, na.action = na.fail)
+n_CWM_5 <- glmmTMB(data = cwm_traits_adj, weighted_n ~ 1 + (1|Block), family = gaussian(), na.action = na.fail)
 
 AICc(n_CWM_1, n_CWM_2, n_CWM_3, n_CWM_4, n_CWM_5) # best is no interaction
 
 # residuals are normal
 shapiro.test(residuals(n_CWM_2)) 
 qqPlot(residuals(n_CWM_2))
-
-# variances are equal
-leveneTest(data = cwm_traits_adj, weighted_n ~ climate * treatment) 
 
 # significance & comparisons
 summary(n_CWM_2)
@@ -342,60 +317,56 @@ plot(emmeans(n_CWM_2, ~ climate + treatment))
 #### f. Best-fit Model Table
 
 ```{r}
-dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Leaf Area") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment")
+dredge_LA <- as.data.frame(dredge(LA_CWM_3)) %>%
+  arrange(df) %>% 
+  mutate(CWM = "Leaf Area")
 
-dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Specific Leaf Area") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment")
+dredge_SLA <-  as.data.frame(dredge(SLA_CWM_1)) %>%
+  arrange(df) %>% 
+  mutate(CWM = "Specific Leaf Area")
 
-dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Leaf Dry Matter Content") %>%
-  dplyr::select(CWM, climate, treatment)
+dredge_LDMC <- as.data.frame(dredge(LDMC_CWM_1)) %>%
+    arrange(df) %>% 
+  mutate(CWM = "Leaf Dry Matter Content") 
 
-dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Seed Mass (log)") %>%
-  dplyr::select(CWM, climate, treatment)
+dredge_log_seed_mass <- as.data.frame(dredge(seed_mass_CWM_1)) %>%
+    arrange(df) %>% 
+  mutate(CWM = "Seed Mass (log)") 
 
-dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
-  filter(AICc == min(AICc)) %>% 
-  mutate(CWM = "Leaf Nitrogen Content (log)") %>%
-  dplyr::select(CWM, climate, treatment)
+dredge_log_n <- as.data.frame(dredge(n_CWM_1)) %>%
+    arrange(df) %>% 
+  mutate(CWM = "Leaf Nitrogen Content (log)") 
 
-dredge_table <- dredge_LA %>% 
-  full_join(dredge_SLA) %>% 
-  full_join(dredge_LDMC) %>% 
-  full_join(dredge_log_seed_mass) %>% 
-  full_join(dredge_log_n) %>% 
-  mutate(climate = str_replace(climate, "\\+","x")) %>%
-  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
-  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
+dredge_table <- dredge_LA %>%
+  full_join(dredge_SLA) %>%
+  full_join(dredge_LDMC) %>%
+  full_join(dredge_log_seed_mass) %>%
+  full_join(dredge_log_n) 
+# %>%
+#   mutate(climate = str_replace(climate, "\\+","x")) %>%
+#   mutate(treatment = str_replace(treatment, "\\+","x")) %>%
+#   mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
 
 # Trying gt package
 # data must be a tibble
 
-pretty_table <- dredge_table %>% 
-  as_tibble() %>% 
-  gt() %>% 
-  tab_header(
-    title = "CWM Best-Fit Models"
-  ) %>% 
-  tab_spanner(
-    label = "Fixed Effects Terms",
-    columns = vars(climate, treatment, "climate:treatment")
-  ) %>% 
-  fmt_missing(
-    columns = vars(climate, treatment, "climate:treatment"),
-    missing_text = " "
-  ) %>% 
-  tab_source_note(
-    source_note = "x indicates selection of fixed effect term for best-fit model"
-  )
+# pretty_table <- dredge_table %>% 
+#   as_tibble() %>% 
+#   gt() %>% 
+#   tab_header(
+#     title = "CWM Best-Fit Models"
+#   ) %>% 
+#   tab_spanner(
+#     label = "Fixed Effects Terms",
+#     columns = vars(climate, treatment, "climate:treatment")
+#   ) %>% 
+#   fmt_missing(
+#     columns = vars(climate, treatment, "climate:treatment"),
+#     missing_text = " "
+#   ) %>% 
+#   tab_source_note(
+#     source_note = "x indicates selection of fixed effect term for best-fit model"
+#   )
 
 # pretty_table
 
@@ -406,61 +377,61 @@ pretty_table <- dredge_table %>%
 #### g. AIC Supplement
 
 ```{r}
-
-dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
-  mutate(CWM = "Leaf Area") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
-  mutate(CWM = "Specific Leaf Area") %>% 
-  dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
-
-dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
-  mutate(CWM = "Leaf Dry Matter Content") %>%
-  dplyr::select(CWM, climate, treatment, AICc)
-
-dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
-  mutate(CWM = "Seed Mass (log)") %>%
-  dplyr::select(CWM, climate, treatment, AICc)
-
-dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
-  mutate(CWM = "Leaf Nitrogen Content (log)") %>%
-  dplyr::select(CWM, climate, treatment, AICc)
-
-dredge_table <- dredge_LA %>% 
-  full_join(dredge_SLA) %>% 
-  full_join(dredge_LDMC) %>% 
-  full_join(dredge_log_seed_mass) %>% 
-  full_join(dredge_log_n) %>% 
-  mutate(climate = str_replace(climate, "\\+","x")) %>%
-  mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
-  mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
+# 
+# dredge_LA <- as.data.frame(dredge(LA_CWM)) %>%
+#   mutate(CWM = "Leaf Area") %>% 
+#   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# 
+# dredge_SLA <-  as.data.frame(dredge(SLA_CWM)) %>% 
+#   mutate(CWM = "Specific Leaf Area") %>% 
+#   dplyr::select(CWM, climate, treatment, "climate:treatment", AICc)
+# 
+# dredge_LDMC <- as.data.frame(dredge(LDMC_CWM)) %>% 
+#   mutate(CWM = "Leaf Dry Matter Content") %>%
+#   dplyr::select(CWM, climate, treatment, AICc)
+# 
+# dredge_log_seed_mass <- as.data.frame(dredge(log_seed_mass)) %>% 
+#   mutate(CWM = "Seed Mass (log)") %>%
+#   dplyr::select(CWM, climate, treatment, AICc)
+# 
+# dredge_log_n <- as.data.frame(dredge(log_n_CWM)) %>% 
+#   mutate(CWM = "Leaf Nitrogen Content (log)") %>%
+#   dplyr::select(CWM, climate, treatment, AICc)
+# 
+# dredge_table <- dredge_LA %>% 
+#   full_join(dredge_SLA) %>% 
+#   full_join(dredge_LDMC) %>% 
+#   full_join(dredge_log_seed_mass) %>% 
+#   full_join(dredge_log_n) %>% 
+#   mutate(climate = str_replace(climate, "\\+","x")) %>%
+#   mutate(treatment = str_replace(treatment, "\\+","x")) %>% 
+#   mutate(`climate:treatment` = str_replace(`climate:treatment`, "\\+","x"))
 
 # dredge_table
 
 # Trying gt package
 # data must be a tibble
 
-cwm_aic_sup <- dredge_table %>% 
-  as_tibble() %>% 
-  dplyr::group_by(CWM) %>%
-  gt() %>% 
-  tab_spanner_delim(delim = ".") %>% 
-  tab_header(
-    title = "CWM Models"
-  ) %>%
-  tab_spanner(
-    label = "Fixed Effects Terms",
-    columns = vars(climate, treatment, "climate:treatment")
-  ) %>%
-  fmt_missing(
-    columns = vars(climate, treatment, "climate:treatment"),
-    missing_text = " "
-  ) %>%
-  tab_source_note(
-    source_note = "x indicates selection of fixed effect term for best-fit model"
-  ) %>% 
-  cols_align(align = "center")
+# cwm_aic_sup <- dredge_table %>% 
+#   as_tibble() %>% 
+#   dplyr::group_by(CWM) %>%
+#   gt() %>% 
+#   tab_spanner_delim(delim = ".") %>% 
+#   tab_header(
+#     title = "CWM Models"
+#   ) %>%
+#   tab_spanner(
+#     label = "Fixed Effects Terms",
+#     columns = vars(climate, treatment, "climate:treatment")
+#   ) %>%
+#   fmt_missing(
+#     columns = vars(climate, treatment, "climate:treatment"),
+#     missing_text = " "
+#   ) %>%
+#   tab_source_note(
+#     source_note = "x indicates selection of fixed effect term for best-fit model"
+#   ) %>% 
+#   cols_align(align = "center")
 
 # gtsave(data = cwm_aic_sup, filename = "CWM_AIC_Supplement.png", path = "~/github/Tejon_Functional_Traits/Figures")
 
@@ -473,8 +444,8 @@ library(modelsummary)
 
 modelsummary::datasummary_skim(cwm_traits_adj)
 
-models <- list("SLA" = SLA_CWM, 
-               "Leaf Area" = LA_CWM)
+models <- list("SLA" = SLA_CWM_1, 
+               "Leaf Area" = LA_CWM_3)
 
 names <- c("climateIntermediate" = "Intermediate Climate", 
            "climateMesic" = "Mesic Climate",
@@ -494,6 +465,7 @@ modelsummary::modelsummary(models,
 library(effects)
 
 treatment_cols <- c("#c7eae5", "#b8e186", "#dfc27d")
+treatment_cols <- c("gray30", "gray50", "gray80")
 climate_cols <- c("#f46d43", "#fee090", "#74add1")
 
 # leaf area
